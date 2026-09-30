@@ -1,0 +1,170 @@
+name: NEXUS Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create Android project
+        run: |
+          mkdir -p app/src/main/java/com/nexus/app
+          mkdir -p app/src/main/res/values
+
+          cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+
+          rootProject.name = "NEXUS"
+          include(":app")
+          EOF
+
+          cat > build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '9.3.0' apply false
+          }
+          EOF
+
+          cat > gradle.properties <<'EOF'
+          android.useAndroidX=true
+          org.gradle.jvmargs=-Xmx2g
+          EOF
+
+          cat > app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.nexus.app'
+              compileSdk 37
+
+              defaultConfig {
+                  applicationId 'com.nexus.app'
+                  minSdk 26
+                  targetSdk 37
+                  versionCode 1
+                  versionName '0.1.0'
+              }
+          }
+          EOF
+
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+              <uses-permission android:name="android.permission.INTERNET"/>
+
+              <application
+                  android:theme="@style/AppTheme"
+                  android:label="NEXUS"
+                  android:allowBackup="false"
+                  android:supportsRtl="true">
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:screenOrientation="portrait">
+
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+
+                  </activity>
+              </application>
+
+          </manifest>
+          EOF
+
+          cat > app/src/main/res/values/styles.xml <<'EOF'
+          <resources>
+              <style name="AppTheme"
+                  parent="android:style/Theme.Material.NoActionBar">
+                  <item name="android:fontFamily">sans</item>
+                  <item name="android:colorAccent">#00C2FF</item>
+                  <item name="android:statusBarColor">#000000</item>
+                  <item name="android:navigationBarColor">#000000</item>
+              </style>
+          </resources>
+          EOF
+
+          cat > app/src/main/java/com/nexus/app/MainActivity.java <<'EOF'
+          package com.nexus.app;
+
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.view.WindowManager;
+          import android.graphics.Color;
+          import android.widget.LinearLayout;
+          import android.widget.TextView;
+
+          public class MainActivity extends Activity {
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+
+                  // Screenshot and screen-recording protection
+                  getWindow().setFlags(
+                      WindowManager.LayoutParams.FLAG_SECURE,
+                      WindowManager.LayoutParams.FLAG_SECURE
+                  );
+
+                  LinearLayout layout = new LinearLayout(this);
+                  layout.setOrientation(LinearLayout.VERTICAL);
+                  layout.setPadding(40, 60, 40, 40);
+                  layout.setBackgroundColor(Color.BLACK);
+
+                  TextView title = new TextView(this);
+                  title.setText("NEXUS");
+                  title.setTextSize(34);
+                  title.setTextColor(Color.WHITE);
+
+                  TextView status = new TextView(this);
+                  status.setText(
+                      "TEST BUILD\\n\\n" +
+                      "Secure messaging foundation\\n\\n" +
+                      "✓ Screenshot protection\\n" +
+                      "✓ Screen recording protection\\n" +
+                      "✓ Backup disabled\\n" +
+                      "✓ Internet transport ready\\n\\n" +
+                      "E2EE messaging layer will be added next."
+                  );
+                  status.setTextSize(17);
+                  status.setTextColor(Color.WHITE);
+                  status.setPadding(0, 40, 0, 0);
+
+                  layout.addView(title);
+                  layout.addView(status);
+
+                  setContentView(layout);
+              }
+          }
+          EOF
+
+          wget -q https://services.gradle.org/distributions/gradle-9.5-bin.zip
+          unzip -q gradle-9.5-bin.zip
+          ./gradle-9.5/bin/gradle assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEXUS-debug-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
