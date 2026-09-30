@@ -1,0 +1,1 @@
+# NEXUS release shrinker rules
