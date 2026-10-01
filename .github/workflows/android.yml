@@ -115,8 +115,8 @@ jobs:
                   minSdk 26
                   targetSdk 35
 
-                  versionCode 15
-                  versionName '0.12.2-libsignal-introspection'
+                  versionCode 16
+                  versionName '0.12.3-libsignal-bytecode'
               }
 
               compileOptions {
@@ -283,6 +283,7 @@ jobs:
           mkdir -p api-report
 
           CACHE="$HOME/.gradle/caches/modules-2/files-2.1/org.signal"
+          ALLCACHE="$HOME/.gradle/caches"
 
           echo "=== LIBSIGNAL CACHE ===" \
             > api-report/libsignal.txt
@@ -337,6 +338,9 @@ jobs:
 
           echo "=== SESSION RELATED CLASSES ===" \
             >> api-report/libsignal.txt
+
+          echo "=== ALL LIBSIGNAL ARTIFACTS ===" >> api-report/libsignal.txt
+          find "$ALLCACHE" -type f \( -name "*libsignal*.jar" -o -name "*libsignal*.aar" \) | sort >> api-report/libsignal.txt
 
           find "$CACHE" \
             -type f \
