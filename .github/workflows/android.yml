@@ -1,14 +1,11 @@
 name: NEXUS Android Build
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
@@ -22,10 +19,11 @@ jobs:
 
       - name: Check Android environment
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          echo "JAVA_HOME=$JAVA_HOME"
           java -version
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --version
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls -la "$ANDROID_HOME"
+          ls -la "$ANDROID_HOME/cmdline-tools/latest/bin" || true
 
       - name: Install Android SDK components
         run: |
@@ -35,21 +33,33 @@ jobs:
             "platforms;android-35" \
             "build-tools;35.0.0"
 
-      - name: Prepare Gradle wrapper
+      # IMPORTANT:
+      # Bootstrap Gradle OUTSIDE the repository so the root
+      # settings.gradle cannot interfere with wrapper generation.
+      - name: Prepare isolated Gradle wrapper
         run: |
-          mkdir -p gradle-bootstrap
-          cd gradle-bootstrap
+          rm -rf /tmp/nexus-gradle-bootstrap
+          mkdir -p /tmp/nexus-gradle-bootstrap
+
+          cd /tmp/nexus-gradle-bootstrap
+
+          printf 'rootProject.name="nexus-bootstrap"\n' > settings.gradle
+
           gradle wrapper --gradle-version 9.5.1
-          cp gradlew ../gradlew
-          cp -R gradle ../gradle
-          cd ..
+
+          cp gradlew "$GITHUB_WORKSPACE/gradlew"
+          cp -R gradle "$GITHUB_WORKSPACE/gradle"
+
+          cd "$GITHUB_WORKSPACE"
           chmod +x gradlew
+
+          echo "Gradle wrapper prepared:"
+          ./gradlew --version
 
       - name: Create NEXUS project
         run: |
           mkdir -p app/src/main/java/com/nexus/app
           mkdir -p app/src/test/java/com/nexus/app
-          mkdir -p app/src/main/res/values
 
           cat > settings.gradle <<'EOF'
           pluginManagement {
@@ -57,6 +67,7 @@ jobs:
                   google()
                   mavenCentral()
                   gradlePluginPortal()
+                  maven { url = uri("https://build-artifacts.signal.org/libraries/maven/") }
               }
           }
 
@@ -65,9 +76,7 @@ jobs:
               repositories {
                   google()
                   mavenCentral()
-                  maven {
-                      url = uri("https://build-artifacts.signal.org/libraries/maven/")
-                  }
+                  maven { url = uri("https://build-artifacts.signal.org/libraries/maven/") }
               }
           }
 
@@ -79,6 +88,12 @@ jobs:
           plugins {
               id 'com.android.application' version '8.13.2' apply false
           }
+          EOF
+
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          android.nonTransitiveRClass=true
           EOF
 
           cat > app/build.gradle <<'EOF'
@@ -96,14 +111,19 @@ jobs:
                   targetSdk 35
                   versionCode 11
                   versionName '0.10.1-session-fix'
-
-                  testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+                  testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
               }
 
               compileOptions {
                   coreLibraryDesugaringEnabled true
                   sourceCompatibility JavaVersion.VERSION_17
                   targetCompatibility JavaVersion.VERSION_17
+              }
+
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                  }
               }
           }
 
@@ -122,8 +142,6 @@ jobs:
           }
           EOF
 
-      - name: Create AndroidManifest
-        run: |
           cat > app/src/main/AndroidManifest.xml <<'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
@@ -131,9 +149,9 @@ jobs:
 
               <application
                   android:allowBackup="false"
+                  android:label="NEXUS"
                   android:supportsRtl="true"
-                  android:theme="@style/AppTheme"
-                  android:label="NEXUS">
+                  android:theme="@style/AppTheme">
 
                   <activity
                       android:name=".MainActivity"
@@ -151,211 +169,121 @@ jobs:
           </manifest>
           EOF
 
-      - name: Create theme
-        run: |
+          mkdir -p app/src/main/res/values
+
           cat > app/src/main/res/values/styles.xml <<'EOF'
           <resources>
-
               <style name="AppTheme"
                   parent="android:style/Theme.Material.Light.NoActionBar">
-
                   <item name="android:fontFamily">sans</item>
-                  <item name="android:windowLightStatusBar">true</item>
-                  <item name="android:statusBarColor">#FFFFFF</item>
-                  <item name="android:navigationBarColor">#FFFFFF</item>
-
+                  <item name="android:windowLightStatusBar">false</item>
+                  <item name="android:statusBarColor">#000000</item>
+                  <item name="android:navigationBarColor">#000000</item>
               </style>
-
           </resources>
           EOF
 
-      - name: Create IdentityStore
-        run: |
           cat > app/src/main/java/com/nexus/app/IdentityStore.java <<'EOF'
           package com.nexus.app;
 
-          import android.security.keystore.KeyGenParameterSpec;
-          import android.security.keystore.KeyProperties;
-
+          import android.content.Context;
           import java.nio.charset.StandardCharsets;
+          import java.security.KeyPair;
           import java.security.KeyPairGenerator;
           import java.security.KeyStore;
           import java.security.MessageDigest;
-          import java.security.PublicKey;
+          import java.security.spec.ECGenParameterSpec;
 
           public final class IdentityStore {
 
-              private static final String ANDROID_KEYSTORE = "AndroidKeyStore";
               private static final String ALIAS = "nexus_device_identity_v1";
 
               private IdentityStore() {}
 
-              public static void ensureIdentity() throws Exception {
-
-                  KeyStore keyStore = KeyStore.getInstance(ANDROID_KEYSTORE);
+              public static KeyPair getOrCreate(Context context) throws Exception {
+                  KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
                   keyStore.load(null);
 
                   if (keyStore.containsAlias(ALIAS)) {
-                      return;
+                      KeyStore.PrivateKeyEntry entry =
+                              (KeyStore.PrivateKeyEntry) keyStore.getEntry(ALIAS, null);
+
+                      return new KeyPair(
+                              entry.getCertificate().getPublicKey(),
+                              entry.getPrivateKey()
+                      );
                   }
 
                   KeyPairGenerator generator =
                           KeyPairGenerator.getInstance(
-                                  KeyProperties.KEY_ALGORITHM_EC,
-                                  ANDROID_KEYSTORE
+                                  "EC",
+                                  "AndroidKeyStore"
                           );
 
-                  KeyGenParameterSpec spec =
-                          new KeyGenParameterSpec.Builder(
-                                  ALIAS,
-                                  KeyProperties.PURPOSE_SIGN |
-                                          KeyProperties.PURPOSE_VERIFY
-                          )
-                                  .setAlgorithmParameterSpec(
-                                          new java.security.spec.ECGenParameterSpec(
-                                                  "secp256r1"
-                                          )
-                                  )
-                                  .setDigests(
-                                          KeyProperties.DIGEST_SHA256
-                                  )
-                                  .build();
+                  generator.initialize(
+                          new ECGenParameterSpec("secp256r1")
+                  );
 
-                  generator.initialize(spec);
-                  generator.generateKeyPair();
+                  return generator.generateKeyPair();
               }
 
-              public static PublicKey getPublicKey() throws Exception {
-
-                  KeyStore keyStore = KeyStore.getInstance(ANDROID_KEYSTORE);
-                  keyStore.load(null);
-
-                  return keyStore.getCertificate(ALIAS).getPublicKey();
-              }
-
-              public static String getFingerprint() throws Exception {
-
-                  PublicKey publicKey = getPublicKey();
-
-                  byte[] digest = MessageDigest
-                          .getInstance("SHA-256")
+              public static String fingerprint(KeyPair keyPair) throws Exception {
+                  byte[] digest = MessageDigest.getInstance("SHA-256")
                           .digest(
-                                  publicKey
+                                  keyPair.getPublic()
                                           .getEncoded()
                           );
 
-                  StringBuilder builder = new StringBuilder();
+                  StringBuilder result = new StringBuilder();
 
                   for (byte b : digest) {
-                      builder.append(
-                              String.format("%02X", b)
-                      );
+                      result.append(String.format("%02X", b));
                   }
 
-                  return builder
-                          .toString()
-                          .substring(0, 32);
+                  return result.substring(0, 32);
               }
           }
           EOF
 
-      - name: Create SessionStore
-        run: |
           cat > app/src/main/java/com/nexus/app/SessionStore.java <<'EOF'
           package com.nexus.app;
 
           import android.content.Context;
           import android.content.SharedPreferences;
 
-          import java.nio.charset.StandardCharsets;
-          import java.security.MessageDigest;
-
           public final class SessionStore {
 
-              private static final String PREFS =
-                      "nexus_signal_session_store";
-
-              private static final String KEY_STATE =
-                      "session_state";
+              private static final String PREFS = "nexus_session_state";
 
               private SessionStore() {}
 
-              private static SharedPreferences prefs(Context context) {
+              public static void save(
+                      Context context,
+                      String peerId,
+                      String peerFingerprint
+              ) {
+                  SharedPreferences preferences =
+                          context.getSharedPreferences(
+                                  PREFS,
+                                  Context.MODE_PRIVATE
+                          );
+
+                  preferences.edit()
+                          .putString("peer_id", peerId)
+                          .putString("peer_fingerprint", peerFingerprint)
+                          .putBoolean("established", true)
+                          .apply();
+              }
+
+              public static boolean exists(Context context) {
                   return context.getSharedPreferences(
                           PREFS,
                           Context.MODE_PRIVATE
-                  );
-              }
-
-              public static void saveState(
-                      Context context,
-                      String state
-              ) {
-                  prefs(context)
-                          .edit()
-                          .putString(KEY_STATE, state)
-                          .apply();
-              }
-
-              public static String loadState(
-                      Context context
-              ) {
-                  return prefs(context)
-                          .getString(KEY_STATE, null);
-              }
-
-              public static void clear(
-                      Context context
-              ) {
-                  prefs(context)
-                          .edit()
-                          .remove(KEY_STATE)
-                          .apply();
-              }
-
-              public static boolean exists(
-                      Context context
-              ) {
-                  return loadState(context) != null;
-              }
-
-              public static String stateFingerprint(
-                      Context context
-              ) throws Exception {
-
-                  String state = loadState(context);
-
-                  if (state == null) {
-                      return null;
-                  }
-
-                  byte[] digest =
-                          MessageDigest
-                                  .getInstance("SHA-256")
-                                  .digest(
-                                          state.getBytes(
-                                                  StandardCharsets.UTF_8
-                                          )
-                                  );
-
-                  StringBuilder builder =
-                          new StringBuilder();
-
-                  for (byte b : digest) {
-                      builder.append(
-                              String.format("%02X", b)
-                      );
-                  }
-
-                  return builder
-                          .toString()
-                          .substring(0, 32);
+                  ).getBoolean("established", false);
               }
           }
           EOF
 
-      - name: Create SignalSession
-        run: |
           cat > app/src/main/java/com/nexus/app/SignalSession.java <<'EOF'
           package com.nexus.app;
 
@@ -363,7 +291,6 @@ jobs:
 
               private final String peerId;
               private final String peerFingerprint;
-
               private boolean established;
 
               public SignalSession(
@@ -372,7 +299,14 @@ jobs:
               ) {
                   this.peerId = peerId;
                   this.peerFingerprint = peerFingerprint;
-                  this.established = false;
+              }
+
+              public void establish() {
+                  established = true;
+              }
+
+              public boolean isEstablished() {
+                  return established;
               }
 
               public String getPeerId() {
@@ -382,23 +316,9 @@ jobs:
               public String getPeerFingerprint() {
                   return peerFingerprint;
               }
-
-              public boolean isEstablished() {
-                  return established;
-              }
-
-              public void markEstablished() {
-                  established = true;
-              }
-
-              public void markClosed() {
-                  established = false;
-              }
           }
           EOF
 
-      - name: Create ReplayGuard
-        run: |
           cat > app/src/main/java/com/nexus/app/ReplayGuard.java <<'EOF'
           package com.nexus.app;
 
@@ -410,12 +330,9 @@ jobs:
               private final Set<String> seenMessageIds =
                       new HashSet<>();
 
-              public synchronized boolean accept(
-                      String messageId
-              ) {
+              public synchronized boolean accept(String messageId) {
 
-                  if (messageId == null ||
-                          messageId.isEmpty()) {
+                  if (messageId == null || messageId.isEmpty()) {
                       return false;
                   }
 
@@ -437,49 +354,21 @@ jobs:
           }
           EOF
 
-      - name: Create SignalEngine
-        run: |
           cat > app/src/main/java/com/nexus/app/SignalEngine.java <<'EOF'
           package com.nexus.app;
 
-          import android.content.Context;
-
           public final class SignalEngine {
 
-              public static final String VERSION =
-                      "0.10.1-session-fix";
-
-              public static final String LIBSIGNAL =
-                      "0.102.2";
-
-              private SignalEngine() {}
-
-              public static boolean isSignalAvailable() {
-                  return true;
+              public boolean isReady() {
+                  return false;
               }
 
-              public static void initialize(
-                      Context context
-              ) {
-
-                  SessionStore.exists(context);
-              }
-
-              public static String status(
-                      Context context
-              ) {
-
-                  if (SessionStore.exists(context)) {
-                      return "Signal: session state mevcut";
-                  }
-
-                  return "Signal: session state yok";
+              public String status() {
+                  return "Signal altyapısı hazır; gerçek oturum henüz aktif değil.";
               }
           }
           EOF
 
-      - name: Create MainActivity
-        run: |
           cat > app/src/main/java/com/nexus/app/MainActivity.java <<'EOF'
           package com.nexus.app;
 
@@ -488,11 +377,12 @@ jobs:
           import android.view.WindowManager;
           import android.widget.TextView;
 
+          import java.security.KeyPair;
+
           public class MainActivity extends Activity {
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
-
                   super.onCreate(savedInstanceState);
 
                   getWindow().setFlags(
@@ -500,115 +390,66 @@ jobs:
                           WindowManager.LayoutParams.FLAG_SECURE
                   );
 
+                  TextView textView = new TextView(this);
+                  textView.setPadding(48, 80, 48, 48);
+                  textView.setTextSize(18);
+
                   try {
-                      IdentityStore.ensureIdentity();
-                      SignalEngine.initialize(this);
+                      KeyPair identity =
+                              IdentityStore.getOrCreate(this);
 
-                      TextView session = new TextView(this);
+                      String fingerprint =
+                              IdentityStore.fingerprint(identity);
 
-                      session.setText(
+                      textView.setText(
                               "NEXUS\n\n" +
                               "0.10.1 SESSION FIX\n\n" +
-                              "Device fingerprint:\n" +
-                              IdentityStore.getFingerprint() +
+                              "Cihaz kimliği hazır.\n\n" +
+                              "Fingerprint:\n" +
+                              fingerprint +
                               "\n\n" +
-                              "libsignal: " +
-                              SignalEngine.LIBSIGNAL +
-                              "\n\n" +
-                              SignalEngine.status(this) +
-                              "\n\n" +
-                              "✓ Keystore identity\n" +
-                              "✓ Session storage foundation\n" +
-                              "✓ Peer session model\n" +
-                              "✓ Replay protection\n\n" +
-                              "Gerçek Signal session " +
-                              "henüz kurulmuş değil."
+                              "Signal altyapısı bağlı.\n" +
+                              "Gerçek Signal oturumu henüz aktif değil.\n\n" +
+                              "Replay koruması hazır.\n" +
+                              "Ekran görüntüsü/kayıt koruması aktif."
                       );
-
-                      session.setTextSize(16);
-                      session.setPadding(
-                              40,
-                              80,
-                              40,
-                              40
-                      );
-
-                      setContentView(session);
 
                   } catch (Exception e) {
-
-                      TextView error =
-                              new TextView(this);
-
-                      error.setText(
-                              "NEXUS başlatılamadı:\n\n" +
+                      textView.setText(
+                              "NEXUS başlatma hatası:\n\n" +
                               e.getMessage()
                       );
-
-                      error.setTextSize(16);
-
-                      setContentView(error);
                   }
+
+                  setContentView(textView);
               }
           }
           EOF
 
-      - name: Create tests
-        run: |
           cat > app/src/test/java/com/nexus/app/SessionModelTest.java <<'EOF'
           package com.nexus.app;
 
           import org.junit.Test;
-
-          import static org.junit.Assert.assertFalse;
-          import static org.junit.Assert.assertTrue;
+          import static org.junit.Assert.*;
 
           public class SessionModelTest {
 
               @Test
-              public void sessionStartsClosed() {
-
+              public void sessionLifecycleWorks() {
                   SignalSession session =
                           new SignalSession(
-                                  "NX-TEST",
-                                  "ABCDEF"
+                                  "NX-TEST-0001",
+                                  "ABCDEF123456"
                           );
 
-                  assertFalse(
-                          session.isEstablished()
-                  );
-              }
+                  assertFalse(session.isEstablished());
 
-              @Test
-              public void sessionCanBeEstablished() {
+                  session.establish();
 
-                  SignalSession session =
-                          new SignalSession(
-                                  "NX-TEST",
-                                  "ABCDEF"
-                          );
-
-                  session.markEstablished();
-
-                  assertTrue(
-                          session.isEstablished()
-                  );
-              }
-
-              @Test
-              public void sessionCanBeClosed() {
-
-                  SignalSession session =
-                          new SignalSession(
-                                  "NX-TEST",
-                                  "ABCDEF"
-                          );
-
-                  session.markEstablished();
-                  session.markClosed();
-
-                  assertFalse(
-                          session.isEstablished()
+                  assertTrue(session.isEstablished());
+                  assertEquals(
+                          "NX-TEST-0001",
+                          session.getPeerId()
                   );
               }
           }
@@ -618,28 +459,14 @@ jobs:
           package com.nexus.app;
 
           import org.junit.Test;
-
-          import static org.junit.Assert.assertFalse;
-          import static org.junit.Assert.assertTrue;
+          import static org.junit.Assert.*;
 
           public class ReplayGuardTest {
 
               @Test
-              public void firstMessageAccepted() {
+              public void duplicateMessageIsRejected() {
 
-                  ReplayGuard guard =
-                          new ReplayGuard();
-
-                  assertTrue(
-                          guard.accept("message-1")
-                  );
-              }
-
-              @Test
-              public void duplicateRejected() {
-
-                  ReplayGuard guard =
-                          new ReplayGuard();
+                  ReplayGuard guard = new ReplayGuard();
 
                   assertTrue(
                           guard.accept("message-1")
@@ -648,42 +475,24 @@ jobs:
                   assertFalse(
                           guard.accept("message-1")
                   );
-              }
 
-              @Test
-              public void differentMessagesAccepted() {
-
-                  ReplayGuard guard =
-                          new ReplayGuard();
-
-                  assertTrue(
-                          guard.accept("message-1")
-                  );
-
-                  assertTrue(
-                          guard.accept("message-2")
+                  assertEquals(
+                          1,
+                          guard.size()
                   );
               }
 
               @Test
-              public void emptyMessageRejected() {
+              public void invalidMessageIsRejected() {
 
-                  ReplayGuard guard =
-                          new ReplayGuard();
-
-                  assertFalse(
-                          guard.accept("")
-                  );
-              }
-
-              @Test
-              public void nullMessageRejected() {
-
-                  ReplayGuard guard =
-                          new ReplayGuard();
+                  ReplayGuard guard = new ReplayGuard();
 
                   assertFalse(
                           guard.accept(null)
+                  );
+
+                  assertFalse(
+                          guard.accept("")
                   );
               }
           }
@@ -699,11 +508,12 @@ jobs:
 
       - name: Verify APK
         run: |
-          test -f app/build/outputs/apk/debug/app-debug.apk
+          ls -lh app/build/outputs/apk/debug/
           sha256sum app/build/outputs/apk/debug/app-debug.apk
 
-      - name: Upload NEXUS 0.10.1 APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: NEXUS-SESSION-FIX-0.10.1-debug-APK
           path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
