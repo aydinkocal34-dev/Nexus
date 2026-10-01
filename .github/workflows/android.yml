@@ -20,13 +20,16 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      # Android SDK
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK
+      - name: Install Android SDK components
         run: |
           yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          sdkmanager "platform-tools"
+          sdkmanager "platforms;android-35"
+          sdkmanager "build-tools;35.0.0"
 
       # ---------------------------------------------------------
       # PROJECT
@@ -116,6 +119,7 @@ jobs:
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.7.1'
               implementation 'androidx.core:core:1.17.0'
+
               implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 
               implementation 'org.signal:libsignal-client:0.102.2'
@@ -149,7 +153,9 @@ jobs:
                       </intent-filter>
 
                   </activity>
+
               </application>
+
           </manifest>
           EOF
 
@@ -184,20 +190,17 @@ jobs:
           import android.graphics.Typeface;
           import android.view.Gravity;
           import android.widget.*;
-          import android.content.Context;
 
           public class MainActivity extends Activity {
 
               private LinearLayout root;
               private TextView status;
-              private TextView identity;
               private RelayClient relay;
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
 
-                  // Screenshot / screen recording protection
                   getWindow().setFlags(
                       WindowManager.LayoutParams.FLAG_SECURE,
                       WindowManager.LayoutParams.FLAG_SECURE
@@ -231,12 +234,16 @@ jobs:
                   title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
                   title.setGravity(Gravity.CENTER);
 
-                  TextView version = text("0.8.0 • RELAY", 13);
+                  TextView version = text(
+                      "0.8.0 • RELAY",
+                      13
+                  );
                   version.setGravity(Gravity.CENTER);
                   version.setTextColor(Color.LTGRAY);
 
-                  identity = text(
-                      "NEXUS ID: " + IdentityStore.getNexusId(this)
+                  TextView identity = text(
+                      "NEXUS ID: "
+                      + IdentityStore.getNexusId(this)
                       + "\nFingerprint: "
                       + IdentityStore.getFingerprint(this),
                       13
@@ -248,27 +255,37 @@ jobs:
                   );
 
                   Button connect = new Button(this);
-                  connect.setText("GÜVENLİ BAĞLANTIYI BAŞLAT");
+                  connect.setText(
+                      "GÜVENLİ BAĞLANTIYI BAŞLAT"
+                  );
 
                   connect.setOnClickListener(v -> {
-                      updateStatus("● RELAY: BAĞLANIYOR...");
+                      updateStatus(
+                          "● RELAY: BAĞLANIYOR..."
+                      );
                       relay.connect();
                   });
 
                   Button disconnect = new Button(this);
-                  disconnect.setText("BAĞLANTIYI KES");
+                  disconnect.setText(
+                      "BAĞLANTIYI KES"
+                  );
 
                   disconnect.setOnClickListener(v -> {
                       relay.disconnect();
-                      updateStatus("● RELAY: BAĞLI DEĞİL");
+                      updateStatus(
+                          "● RELAY: BAĞLI DEĞİL"
+                      );
                   });
 
                   TextView info = text(
-                      "Blind Relay\n\n"
-                      + "Relay mesaj içeriğini okumaz.\n"
-                      + "Bu sürüm ağ taşıma katmanını hazırlar.\n"
-                      + "Gerçek Signal E2EE oturumu bir sonraki aşamada kurulacaktır.\n\n"
-                      + "TLS/WSS • Replay Protection • Message ID • Reconnect",
+                      "BLIND RELAY\n\n"
+                      + "Relay mesaj içeriğini okuyamaz.\n\n"
+                      + "Bu sürüm ağ taşıma katmanını hazırlar.\n\n"
+                      + "Gerçek Signal E2EE oturumu "
+                      + "bir sonraki aşamada kurulacaktır.\n\n"
+                      + "TLS/WSS • Replay Protection\n"
+                      + "Message ID • Reconnect",
                       14
                   );
 
@@ -284,7 +301,9 @@ jobs:
               }
 
               private void updateStatus(String value) {
-                  runOnUiThread(() -> status.setText(value));
+                  runOnUiThread(
+                      () -> status.setText(value)
+                  );
               }
           }
           EOF
@@ -301,33 +320,52 @@ jobs:
           import android.security.keystore.KeyGenParameterSpec;
           import android.security.keystore.KeyProperties;
 
-          import java.security.KeyPair;
           import java.security.KeyPairGenerator;
           import java.security.KeyStore;
           import java.security.MessageDigest;
 
           public final class IdentityStore {
 
-              private static final String ALIAS = "nexus_device_identity_v1";
-              private static final String PREF = "nexus_identity";
+              private static final String ALIAS =
+                  "nexus_device_identity_v1";
+
+              private static final String PREF =
+                  "nexus_identity";
 
               private IdentityStore() {}
 
-              public static String getNexusId(Context context) {
-                  SharedPreferences p =
-                      context.getSharedPreferences(PREF, Context.MODE_PRIVATE);
+              public static String getNexusId(
+                  Context context
+              ) {
 
-                  String id = p.getString("nexus_id", null);
+                  SharedPreferences p =
+                      context.getSharedPreferences(
+                          PREF,
+                          Context.MODE_PRIVATE
+                      );
+
+                  String id =
+                      p.getString(
+                          "nexus_id",
+                          null
+                      );
 
                   if (id == null) {
-                      id = "NX-"
+
+                      id =
+                          "NX-"
                           + randomPart()
                           + "-"
                           + randomPart()
                           + "-"
                           + randomPart();
 
-                      p.edit().putString("nexus_id", id).apply();
+                      p.edit()
+                          .putString(
+                              "nexus_id",
+                              id
+                          )
+                          .apply();
                   }
 
                   ensureKey();
@@ -335,11 +373,19 @@ jobs:
                   return id;
               }
 
-              public static String getFingerprint(Context context) {
+              public static String getFingerprint(
+                  Context context
+              ) {
+
                   getNexusId(context);
 
                   try {
-                      KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
+
+                      KeyStore ks =
+                          KeyStore.getInstance(
+                              "AndroidKeyStore"
+                          );
+
                       ks.load(null);
 
                       byte[] encoded =
@@ -348,16 +394,27 @@ jobs:
                             .getEncoded();
 
                       byte[] digest =
-                          MessageDigest.getInstance("SHA-256")
+                          MessageDigest
+                              .getInstance("SHA-256")
                               .digest(encoded);
 
-                      StringBuilder sb = new StringBuilder();
+                      StringBuilder sb =
+                          new StringBuilder();
 
                       for (byte b : digest) {
-                          sb.append(String.format("%02X", b));
+                          sb.append(
+                              String.format(
+                                  "%02X",
+                                  b
+                              )
+                          );
                       }
 
-                      return sb.substring(0, 32);
+                      return sb.substring(
+                          0,
+                          32
+                      );
+
                   } catch (Exception e) {
                       return "UNAVAILABLE";
                   }
@@ -366,7 +423,12 @@ jobs:
               private static void ensureKey() {
 
                   try {
-                      KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
+
+                      KeyStore ks =
+                          KeyStore.getInstance(
+                              "AndroidKeyStore"
+                          );
+
                       ks.load(null);
 
                       if (ks.containsAlias(ALIAS)) {
@@ -386,9 +448,10 @@ jobs:
                                   | KeyProperties.PURPOSE_VERIFY
                           )
                           .setAlgorithmParameterSpec(
-                              new java.security.spec.ECGenParameterSpec(
-                                  "secp256r1"
-                              )
+                              new java.security.spec
+                                  .ECGenParameterSpec(
+                                      "secp256r1"
+                                  )
                           )
                           .setDigests(
                               KeyProperties.DIGEST_SHA256
@@ -403,9 +466,12 @@ jobs:
               }
 
               private static String randomPart() {
+
                   return String.format(
                       "%04X",
-                      (int)(Math.random() * 65536)
+                      (int)(
+                          Math.random() * 65536
+                      )
                   );
               }
           }
@@ -437,10 +503,15 @@ jobs:
                   String ciphertext,
                   long expiration
               ) {
-                  this.messageId = UUID.randomUUID().toString();
+
+                  this.messageId =
+                      UUID.randomUUID().toString();
+
                   this.sender = sender;
                   this.recipient = recipient;
-                  this.timestamp = System.currentTimeMillis();
+                  this.timestamp =
+                      System.currentTimeMillis();
+
                   this.expiration = expiration;
                   this.ciphertext = ciphertext;
               }
@@ -457,15 +528,20 @@ jobs:
 
                   return Base64.getEncoder()
                       .encodeToString(
-                          raw.getBytes(StandardCharsets.UTF_8)
+                          raw.getBytes(
+                              StandardCharsets.UTF_8
+                          )
                       );
               }
 
               public static String opaqueCiphertext(
                   byte[] encryptedData
               ) {
+
                   return Base64.getEncoder()
-                      .encodeToString(encryptedData);
+                      .encodeToString(
+                          encryptedData
+                      );
               }
           }
           EOF
@@ -492,18 +568,25 @@ jobs:
                           0.75f,
                           true
                       ) {
+
                           @Override
                           protected boolean removeEldestEntry(
                               Map.Entry<String, Boolean> eldest
                           ) {
+
                               return size() > MAX_ENTRIES;
                           }
                       }
                   );
 
-              public boolean accept(String messageId) {
+              public boolean accept(
+                  String messageId
+              ) {
 
-                  if (messageId == null || messageId.isEmpty()) {
+                  if (
+                      messageId == null
+                      || messageId.isEmpty()
+                  ) {
                       return false;
                   }
 
@@ -513,7 +596,11 @@ jobs:
                           return false;
                       }
 
-                      seen.put(messageId, Boolean.TRUE);
+                      seen.put(
+                          messageId,
+                          Boolean.TRUE
+                      );
+
                       return true;
                   }
               }
@@ -526,8 +613,6 @@ jobs:
 
           cat > app/src/main/java/com/nexus/app/RelayClient.java <<'EOF'
           package com.nexus.app;
-
-          import android.content.Context;
 
           import java.util.concurrent.TimeUnit;
 
@@ -549,7 +634,9 @@ jobs:
               private final OkHttpClient client;
 
               private WebSocket socket;
+
               private int reconnectAttempt = 0;
+
               private boolean manuallyClosed = false;
 
               private final ReplayGuard replayGuard =
@@ -559,14 +646,25 @@ jobs:
                   String url,
                   Listener listener
               ) {
+
                   this.url = url;
                   this.listener = listener;
 
-                  client = new OkHttpClient.Builder()
-                      .connectTimeout(10, TimeUnit.SECONDS)
-                      .readTimeout(0, TimeUnit.MILLISECONDS)
-                      .pingInterval(20, TimeUnit.SECONDS)
-                      .build();
+                  client =
+                      new OkHttpClient.Builder()
+                          .connectTimeout(
+                              10,
+                              TimeUnit.SECONDS
+                          )
+                          .readTimeout(
+                              0,
+                              TimeUnit.MILLISECONDS
+                          )
+                          .pingInterval(
+                              20,
+                              TimeUnit.SECONDS
+                          )
+                          .build();
               }
 
               public void connect() {
@@ -578,73 +676,76 @@ jobs:
                           .url(url)
                           .build();
 
-                  socket = client.newWebSocket(
-                      request,
-                      new WebSocketListener() {
+                  socket =
+                      client.newWebSocket(
+                          request,
+                          new WebSocketListener() {
 
-                          @Override
-                          public void onOpen(
-                              WebSocket webSocket,
-                              Response response
-                          ) {
-                              reconnectAttempt = 0;
+                              @Override
+                              public void onOpen(
+                                  WebSocket webSocket,
+                                  Response response
+                              ) {
 
-                              listener.onStatus(
-                                  "● RELAY: BAĞLI"
-                              );
+                                  reconnectAttempt = 0;
+
+                                  listener.onStatus(
+                                      "● RELAY: BAĞLI"
+                                  );
+                              }
+
+                              @Override
+                              public void onMessage(
+                                  WebSocket webSocket,
+                                  String text
+                              ) {
+
+                                  listener.onStatus(
+                                      "● RELAY: ŞİFRELİ VERİ ALINDI"
+                                  );
+                              }
+
+                              @Override
+                              public void onClosing(
+                                  WebSocket webSocket,
+                                  int code,
+                                  String reason
+                              ) {
+
+                                  listener.onStatus(
+                                      "● RELAY: KAPANIYOR"
+                                  );
+                              }
+
+                              @Override
+                              public void onClosed(
+                                  WebSocket webSocket,
+                                  int code,
+                                  String reason
+                              ) {
+
+                                  listener.onStatus(
+                                      "● RELAY: BAĞLANTI KESİLDİ"
+                                  );
+
+                                  scheduleReconnect();
+                              }
+
+                              @Override
+                              public void onFailure(
+                                  WebSocket webSocket,
+                                  Throwable t,
+                                  Response response
+                              ) {
+
+                                  listener.onStatus(
+                                      "● RELAY: BAĞLANTI BAŞARISIZ"
+                                  );
+
+                                  scheduleReconnect();
+                              }
                           }
-
-                          @Override
-                          public void onMessage(
-                              WebSocket webSocket,
-                              String text
-                          ) {
-
-                              // Envelope/messageId parsing will be
-                              // connected to Signal sessions in 0.9.
-                              listener.onStatus(
-                                  "● RELAY: ŞİFRELİ VERİ ALINDI"
-                              );
-                          }
-
-                          @Override
-                          public void onClosing(
-                              WebSocket webSocket,
-                              int code,
-                              String reason
-                          ) {
-                              listener.onStatus(
-                                  "● RELAY: KAPANIYOR"
-                              );
-                          }
-
-                          @Override
-                          public void onClosed(
-                              WebSocket webSocket,
-                              int code,
-                              String reason
-                          ) {
-                              listener.onStatus(
-                                  "● RELAY: BAĞLANTI KESİLDİ"
-                              );
-
-                              scheduleReconnect();
-                          }
-
-                          @Override
-                          public void onFailure(
-                              WebSocket webSocket,
-                              Throwable t,
-                              Response response
-                          ) {
-                              listener.onStatus(
-                                  "● RELAY: BAĞLANTI BAŞARISIZ"
-                              );
-
-                              scheduleReconnect();
-                          }
-                      }
-                  );
+                      );
               }
 
               private void scheduleReconnect() {
@@ -658,10 +759,12 @@ jobs:
                   long delay =
                       Math.min(
                           30000L,
-                          1000L * (1L << Math.min(
-                              reconnectAttempt - 1,
-                              5
-                          ))
+                          1000L * (
+                              1L << Math.min(
+                                  reconnectAttempt - 1,
+                                  5
+                              )
+                          )
                       );
 
                   new android.os.Handler(
@@ -688,7 +791,10 @@ jobs:
               public boolean acceptMessage(
                   String messageId
               ) {
-                  return replayGuard.accept(messageId);
+
+                  return replayGuard.accept(
+                      messageId
+                  );
               }
 
               public void disconnect() {
@@ -696,10 +802,12 @@ jobs:
                   manuallyClosed = true;
 
                   if (socket != null) {
+
                       socket.close(
                           1000,
                           "NEXUS user disconnect"
                       );
+
                       socket = null;
                   }
               }
@@ -727,7 +835,8 @@ jobs:
                           "NX-A",
                           "NX-B",
                           "OPAQUE-A",
-                          System.currentTimeMillis() + 60000
+                          System.currentTimeMillis()
+                              + 60000
                       );
 
                   RelayEnvelope b =
@@ -735,7 +844,8 @@ jobs:
                           "NX-A",
                           "NX-B",
                           "OPAQUE-B",
-                          System.currentTimeMillis() + 60000
+                          System.currentTimeMillis()
+                              + 60000
                       );
 
                   assertNotEquals(
@@ -755,12 +865,19 @@ jobs:
                           123456789L
                       );
 
-                  String serialized = e.serialize();
+                  String serialized =
+                      e.serialize();
 
                   assertNotNull(serialized);
-                  assertFalse(serialized.isEmpty());
+
                   assertFalse(
-                      serialized.contains("HELLO PLAINTEXT")
+                      serialized.isEmpty()
+                  );
+
+                  assertFalse(
+                      serialized.contains(
+                          "HELLO PLAINTEXT"
+                      )
                   );
               }
           }
@@ -782,11 +899,15 @@ jobs:
                       new ReplayGuard();
 
                   assertTrue(
-                      guard.accept("message-001")
+                      guard.accept(
+                          "message-001"
+                      )
                   );
 
                   assertFalse(
-                      guard.accept("message-001")
+                      guard.accept(
+                          "message-001"
+                      )
                   );
               }
 
@@ -797,11 +918,15 @@ jobs:
                       new ReplayGuard();
 
                   assertTrue(
-                      guard.accept("message-001")
+                      guard.accept(
+                          "message-001"
+                      )
                   );
 
                   assertTrue(
-                      guard.accept("message-002")
+                      guard.accept(
+                          "message-002"
+                      )
                   );
               }
           }
