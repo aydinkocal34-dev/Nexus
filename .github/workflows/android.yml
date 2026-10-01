@@ -493,7 +493,18 @@ jobs:
           }
           EOF
           javac /tmp/SessionApiDump.java
-          CP=$(find "$HOME/.gradle/caches/modules-2/files-2.1/org.signal/libsignal-client/0.102.2" -name '*.jar' | head -1)
+          CP=""
+          while IFS= read -r FILE; do
+            if [[ "$FILE" == *.aar ]]; then
+              TMPDIR=$(mktemp -d)
+              unzip -q -o "$FILE" 'classes.jar' -d "$TMPDIR" || true
+              if [ -f "$TMPDIR/classes.jar" ]; then
+                CP="$CP:$TMPDIR/classes.jar"
+              fi
+            elif [[ "$FILE" == *.jar ]]; then
+              CP="$CP:$FILE"
+            fi
+          done < <(find "$HOME/.gradle/caches/modules-2/files-2.1/org.signal" -type f \( -name '*.jar' -o -name '*.aar' \))
           java -cp "/tmp:$CP" SessionApiDump \
             org.signal.libsignal.protocol.SessionBuilder \
             org.signal.libsignal.protocol.SessionCipher \
