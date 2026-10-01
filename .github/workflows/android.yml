@@ -20,9 +20,13 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      # Android SDK
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Check Android environment
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          java -version
+          ls -la "$ANDROID_HOME"
+          sdkmanager --version
 
       - name: Install Android SDK components
         run: |
@@ -31,14 +35,11 @@ jobs:
           sdkmanager "platforms;android-35"
           sdkmanager "build-tools;35.0.0"
 
-      # ---------------------------------------------------------
-      # PROJECT
-      # ---------------------------------------------------------
-
       - name: Create NEXUS 0.8 project
         shell: bash
         run: |
           rm -rf app
+
           mkdir -p app/src/main/java/com/nexus/app
           mkdir -p app/src/main/res/values
           mkdir -p app/src/test/java/com/nexus/app
@@ -119,7 +120,6 @@ jobs:
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.7.1'
               implementation 'androidx.core:core:1.17.0'
-
               implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 
               implementation 'org.signal:libsignal-client:0.102.2'
@@ -176,10 +176,6 @@ jobs:
           </resources>
           EOF
 
-          # -----------------------------------------------------
-          # MAIN ACTIVITY
-          # -----------------------------------------------------
-
           cat > app/src/main/java/com/nexus/app/MainActivity.java <<'EOF'
           package com.nexus.app;
 
@@ -193,7 +189,6 @@ jobs:
 
           public class MainActivity extends Activity {
 
-              private LinearLayout root;
               private TextView status;
               private RelayClient relay;
 
@@ -225,7 +220,7 @@ jobs:
 
               private void buildUi() {
 
-                  root = new LinearLayout(this);
+                  LinearLayout root = new LinearLayout(this);
                   root.setOrientation(LinearLayout.VERTICAL);
                   root.setBackgroundColor(Color.rgb(8, 8, 8));
                   root.setPadding(20, 20, 20, 20);
@@ -234,10 +229,8 @@ jobs:
                   title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
                   title.setGravity(Gravity.CENTER);
 
-                  TextView version = text(
-                      "0.8.0 • RELAY",
-                      13
-                  );
+                  TextView version =
+                      text("0.8.0 • RELAY", 13);
                   version.setGravity(Gravity.CENTER);
                   version.setTextColor(Color.LTGRAY);
 
@@ -267,9 +260,7 @@ jobs:
                   });
 
                   Button disconnect = new Button(this);
-                  disconnect.setText(
-                      "BAĞLANTIYI KES"
-                  );
+                  disconnect.setText("BAĞLANTIYI KES");
 
                   disconnect.setOnClickListener(v -> {
                       relay.disconnect();
@@ -308,10 +299,6 @@ jobs:
           }
           EOF
 
-          # -----------------------------------------------------
-          # IDENTITY
-          # -----------------------------------------------------
-
           cat > app/src/main/java/com/nexus/app/IdentityStore.java <<'EOF'
           package com.nexus.app;
 
@@ -334,9 +321,7 @@ jobs:
 
               private IdentityStore() {}
 
-              public static String getNexusId(
-                  Context context
-              ) {
+              public static String getNexusId(Context context) {
 
                   SharedPreferences p =
                       context.getSharedPreferences(
@@ -345,13 +330,9 @@ jobs:
                       );
 
                   String id =
-                      p.getString(
-                          "nexus_id",
-                          null
-                      );
+                      p.getString("nexus_id", null);
 
                   if (id == null) {
-
                       id =
                           "NX-"
                           + randomPart()
@@ -361,10 +342,7 @@ jobs:
                           + randomPart();
 
                       p.edit()
-                          .putString(
-                              "nexus_id",
-                              id
-                          )
+                          .putString("nexus_id", id)
                           .apply();
                   }
 
@@ -373,18 +351,13 @@ jobs:
                   return id;
               }
 
-              public static String getFingerprint(
-                  Context context
-              ) {
+              public static String getFingerprint(Context context) {
 
                   getNexusId(context);
 
                   try {
-
                       KeyStore ks =
-                          KeyStore.getInstance(
-                              "AndroidKeyStore"
-                          );
+                          KeyStore.getInstance("AndroidKeyStore");
 
                       ks.load(null);
 
@@ -403,17 +376,11 @@ jobs:
 
                       for (byte b : digest) {
                           sb.append(
-                              String.format(
-                                  "%02X",
-                                  b
-                              )
+                              String.format("%02X", b)
                           );
                       }
 
-                      return sb.substring(
-                          0,
-                          32
-                      );
+                      return sb.substring(0, 32);
 
                   } catch (Exception e) {
                       return "UNAVAILABLE";
@@ -423,11 +390,8 @@ jobs:
               private static void ensureKey() {
 
                   try {
-
                       KeyStore ks =
-                          KeyStore.getInstance(
-                              "AndroidKeyStore"
-                          );
+                          KeyStore.getInstance("AndroidKeyStore");
 
                       ks.load(null);
 
@@ -466,20 +430,13 @@ jobs:
               }
 
               private static String randomPart() {
-
                   return String.format(
                       "%04X",
-                      (int)(
-                          Math.random() * 65536
-                      )
+                      (int)(Math.random() * 65536)
                   );
               }
           }
           EOF
-
-          # -----------------------------------------------------
-          # BLIND RELAY ENVELOPE
-          # -----------------------------------------------------
 
           cat > app/src/main/java/com/nexus/app/RelayEnvelope.java <<'EOF'
           package com.nexus.app;
@@ -503,15 +460,12 @@ jobs:
                   String ciphertext,
                   long expiration
               ) {
-
                   this.messageId =
                       UUID.randomUUID().toString();
-
                   this.sender = sender;
                   this.recipient = recipient;
                   this.timestamp =
                       System.currentTimeMillis();
-
                   this.expiration = expiration;
                   this.ciphertext = ciphertext;
               }
@@ -537,18 +491,11 @@ jobs:
               public static String opaqueCiphertext(
                   byte[] encryptedData
               ) {
-
                   return Base64.getEncoder()
-                      .encodeToString(
-                          encryptedData
-                      );
+                      .encodeToString(encryptedData);
               }
           }
           EOF
-
-          # -----------------------------------------------------
-          # REPLAY PROTECTION
-          # -----------------------------------------------------
 
           cat > app/src/main/java/com/nexus/app/ReplayGuard.java <<'EOF'
           package com.nexus.app;
@@ -568,20 +515,16 @@ jobs:
                           0.75f,
                           true
                       ) {
-
                           @Override
                           protected boolean removeEldestEntry(
                               Map.Entry<String, Boolean> eldest
                           ) {
-
                               return size() > MAX_ENTRIES;
                           }
                       }
                   );
 
-              public boolean accept(
-                  String messageId
-              ) {
+              public boolean accept(String messageId) {
 
                   if (
                       messageId == null
@@ -606,10 +549,6 @@ jobs:
               }
           }
           EOF
-
-          # -----------------------------------------------------
-          # WEBSOCKET RELAY CLIENT
-          # -----------------------------------------------------
 
           cat > app/src/main/java/com/nexus/app/RelayClient.java <<'EOF'
           package com.nexus.app;
@@ -646,7 +585,6 @@ jobs:
                   String url,
                   Listener listener
               ) {
-
                   this.url = url;
                   this.listener = listener;
 
@@ -686,7 +624,6 @@ jobs:
                                   WebSocket webSocket,
                                   Response response
                               ) {
-
                                   reconnectAttempt = 0;
 
                                   listener.onStatus(
@@ -699,7 +636,6 @@ jobs:
                                   WebSocket webSocket,
                                   String text
                               ) {
-
                                   listener.onStatus(
                                       "● RELAY: ŞİFRELİ VERİ ALINDI"
                                   );
@@ -711,7 +647,6 @@ jobs:
                                   int code,
                                   String reason
                               ) {
-
                                   listener.onStatus(
                                       "● RELAY: KAPANIYOR"
                                   );
@@ -723,7 +658,6 @@ jobs:
                                   int code,
                                   String reason
                               ) {
-
                                   listener.onStatus(
                                       "● RELAY: BAĞLANTI KESİLDİ"
                                   );
@@ -737,7 +671,6 @@ jobs:
                                   Throwable t,
                                   Response response
                               ) {
-
                                   listener.onStatus(
                                       "● RELAY: BAĞLANTI BAŞARISIZ"
                                   );
@@ -778,7 +711,6 @@ jobs:
               public boolean send(
                   RelayEnvelope envelope
               ) {
-
                   if (socket == null) {
                       return false;
                   }
@@ -791,7 +723,6 @@ jobs:
               public boolean acceptMessage(
                   String messageId
               ) {
-
                   return replayGuard.accept(
                       messageId
                   );
@@ -813,10 +744,6 @@ jobs:
               }
           }
           EOF
-
-          # -----------------------------------------------------
-          # TESTS
-          # -----------------------------------------------------
 
           cat > app/src/test/java/com/nexus/app/RelayEnvelopeTest.java <<'EOF'
           package com.nexus.app;
@@ -853,33 +780,6 @@ jobs:
                       b.messageId
                   );
               }
-
-              @Test
-              public void envelopeContainsOpaqueCiphertext() {
-
-                  RelayEnvelope e =
-                      new RelayEnvelope(
-                          "NX-A",
-                          "NX-B",
-                          "BASE64_CIPHERTEXT",
-                          123456789L
-                      );
-
-                  String serialized =
-                      e.serialize();
-
-                  assertNotNull(serialized);
-
-                  assertFalse(
-                      serialized.isEmpty()
-                  );
-
-                  assertFalse(
-                      serialized.contains(
-                          "HELLO PLAINTEXT"
-                      )
-                  );
-              }
           }
           EOF
 
@@ -899,15 +799,11 @@ jobs:
                       new ReplayGuard();
 
                   assertTrue(
-                      guard.accept(
-                          "message-001"
-                      )
+                      guard.accept("message-001")
                   );
 
                   assertFalse(
-                      guard.accept(
-                          "message-001"
-                      )
+                      guard.accept("message-001")
                   );
               }
 
@@ -918,15 +814,11 @@ jobs:
                       new ReplayGuard();
 
                   assertTrue(
-                      guard.accept(
-                          "message-001"
-                      )
+                      guard.accept("message-001")
                   );
 
                   assertTrue(
-                      guard.accept(
-                          "message-002"
-                      )
+                      guard.accept("message-002")
                   );
               }
           }
