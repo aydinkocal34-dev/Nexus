@@ -22,16 +22,24 @@ jobs:
       - name: Android SDK
         run: |
           SDK="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+
           yes | "$SDK" --licenses >/dev/null 2>&1 || true
-          "$SDK" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+          "$SDK" \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
 
       - name: Gradle
         run: |
           rm -rf /tmp/nexus-gradle
+
           mkdir -p /tmp/nexus-gradle
+
           cd /tmp/nexus-gradle
 
-          printf 'rootProject.name="bootstrap"\n' > settings.gradle
+          printf 'rootProject.name="bootstrap"\n' \
+            > settings.gradle
 
           gradle wrapper --gradle-version 9.5.1
 
@@ -49,25 +57,34 @@ jobs:
                   google()
                   mavenCentral()
                   gradlePluginPortal()
+
                   maven {
-                      url = uri("https://build-artifacts.signal.org/libraries/maven/")
+                      url = uri(
+                          "https://build-artifacts.signal.org/libraries/maven/"
+                      )
                   }
               }
           }
 
           dependencyResolutionManagement {
-              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositoriesMode.set(
+                  RepositoriesMode.FAIL_ON_PROJECT_REPOS
+              )
 
               repositories {
                   google()
                   mavenCentral()
+
                   maven {
-                      url = uri("https://build-artifacts.signal.org/libraries/maven/")
+                      url = uri(
+                          "https://build-artifacts.signal.org/libraries/maven/"
+                      )
                   }
               }
           }
 
           rootProject.name = "NEXUS"
+
           include(":app")
           EOF
 
@@ -89,19 +106,22 @@ jobs:
 
           android {
               namespace 'com.nexus.app'
+
               compileSdk 35
 
               defaultConfig {
                   applicationId 'com.nexus.app'
+
                   minSdk 26
                   targetSdk 35
 
-                  versionCode 13
-                  versionName '0.12.0-libsignal-api'
+                  versionCode 14
+                  versionName '0.12.1-libsignal-api'
               }
 
               compileOptions {
                   coreLibraryDesugaringEnabled true
+
                   sourceCompatibility JavaVersion.VERSION_17
                   targetCompatibility JavaVersion.VERSION_17
               }
@@ -110,21 +130,25 @@ jobs:
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.7.0'
               implementation 'androidx.core:core:1.15.0'
+
               implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 
               implementation 'org.signal:libsignal-client:0.102.2'
               implementation 'org.signal:libsignal-android:0.102.2'
 
-              coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
+              coreLibraryDesugaring \
+                  'com.android.tools:desugar_jdk_libs:2.1.5'
 
               testImplementation 'junit:junit:4.13.2'
           }
           EOF
 
           cat > app/src/main/AndroidManifest.xml <<'EOF'
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+          <manifest
+              xmlns:android="http://schemas.android.com/apk/res/android">
 
-              <uses-permission android:name="android.permission.INTERNET"/>
+              <uses-permission
+                  android:name="android.permission.INTERNET"/>
 
               <application
                   android:theme="@style/AppTheme"
@@ -136,8 +160,11 @@ jobs:
                       android:exported="true">
 
                       <intent-filter>
-                          <action android:name="android.intent.action.MAIN"/>
-                          <category android:name="android.intent.category.LAUNCHER"/>
+                          <action
+                              android:name="android.intent.action.MAIN"/>
+
+                          <category
+                              android:name="android.intent.category.LAUNCHER"/>
                       </intent-filter>
 
                   </activity>
@@ -189,13 +216,13 @@ jobs:
 
                   view.setText(
                       "NEXUS\n\n" +
-                      "0.12 LIBSIGNAL API\n\n" +
+                      "0.12.1 LIBSIGNAL API\n\n" +
                       "✓ libsignal-client 0.102.2\n" +
                       "✓ libsignal-android 0.102.2\n" +
                       "✓ Android Keystore altyapısı\n" +
                       "✓ FLAG_SECURE\n\n" +
-                      "API doğrulama tamamlandı.\n\n" +
-                      "Gerçek E2EE session bir sonraki aşamada bağlanacak."
+                      "API doğrulama aşaması.\n\n" +
+                      "Gerçek E2EE session henüz aktif değil."
                   );
 
                   setContentView(view);
@@ -243,11 +270,11 @@ jobs:
           }
           EOF
 
-      - name: Resolve dependencies
+      - name: Resolve app dependencies
         run: |
           /tmp/nexus-gradle/gradlew \
             -p "$GITHUB_WORKSPACE" \
-            dependencies \
+            :app:dependencies \
             --configuration debugRuntimeClasspath \
             --stacktrace
 
@@ -255,67 +282,93 @@ jobs:
         run: |
           mkdir -p api-report
 
-          echo "=== LIBSIGNAL FILES ===" \
+          CACHE="$HOME/.gradle/caches/modules-2/files-2.1/org.signal"
+
+          echo "=== LIBSIGNAL CACHE ===" \
             > api-report/libsignal.txt
 
-          find "$HOME/.gradle/caches/modules-2/files-2.1/org.signal" \
-            -type f \
-            | sort \
-            >> api-report/libsignal.txt
+          if [ -d "$CACHE" ]; then
+            find "$CACHE" \
+              -type f \
+              | sort \
+              >> api-report/libsignal.txt
+          else
+            echo "Signal cache bulunamadı." \
+              >> api-report/libsignal.txt
+          fi
 
           echo "" \
             >> api-report/libsignal.txt
 
-          echo "=== CLASSES ===" \
+          echo "=== JAR CONTENTS ===" \
             >> api-report/libsignal.txt
 
-          find "$HOME/.gradle/caches/modules-2/files-2.1/org.signal" \
-            -type f \
-            \( -name "*.jar" -o -name "*.aar" \) \
-            -print \
-            >> api-report/libsignal.txt
-
-          echo "" \
-            >> api-report/libsignal.txt
-
-          echo "=== SIGNAL CLASS NAMES ===" \
-            >> api-report/libsignal.txt
-
-          find "$HOME/.gradle/caches/modules-2/files-2.1/org.signal" \
+          find "$CACHE" \
             -type f \
             -name "*.jar" \
-            -exec sh -c '
-              for f do
-                echo "---- $f ----"
-                jar tf "$f" | grep "org/signal/libsignal/protocol" || true
+            -print \
+            | while read -r JAR; do
+
+                echo "" \
+                  >> api-report/libsignal.txt
+
+                echo "===== $JAR =====" \
+                  >> api-report/libsignal.txt
+
+                jar tf "$JAR" \
+                  | grep \
+                    -E \
+                    'org/signal/libsignal/.*(Session|PreKey|Identity|Protocol|Cipher|Address)' \
+                  || true
+
               done
-            ' sh {} + \
+
+          echo "" \
             >> api-report/libsignal.txt
+
+          echo "=== SESSION RELATED CLASSES ===" \
+            >> api-report/libsignal.txt
+
+          find "$CACHE" \
+            -type f \
+            -name "*.jar" \
+            -print \
+            | while read -r JAR; do
+
+                jar tf "$JAR" \
+                  | grep \
+                    -E \
+                    'Session|PreKey|Identity|ProtocolAddress|Cipher' \
+                  || true
+
+              done \
+              | sort -u \
+              >> api-report/libsignal.txt
 
       - name: Run tests
         run: |
           /tmp/nexus-gradle/gradlew \
             -p "$GITHUB_WORKSPACE" \
-            test \
+            :app:test \
             --stacktrace
 
       - name: Build APK
         run: |
           /tmp/nexus-gradle/gradlew \
             -p "$GITHUB_WORKSPACE" \
-            assembleDebug \
+            :app:assembleDebug \
             --stacktrace
 
       - name: Upload API report
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-0.12-libsignal-api-report
+          name: NEXUS-0.12.1-libsignal-api-report
           path: api-report
           retention-days: 14
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-0.12-libsignal-api-APK
+          name: NEXUS-0.12.1-libsignal-api-APK
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
