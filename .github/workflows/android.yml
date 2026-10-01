@@ -1,4 +1,4 @@
-name: NEXUS Android 0.8 Relay
+name: NEXUS Android Build
 
 on:
   workflow_dispatch:
@@ -11,38 +11,84 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
+      # --------------------------------------------------
+      # 1. KODU AL
+      # --------------------------------------------------
       - name: Checkout
         uses: actions/checkout@v4
 
+      # --------------------------------------------------
+      # 2. JAVA 21
+      # --------------------------------------------------
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
 
+      # --------------------------------------------------
+      # 3. ANDROID SDK
+      # --------------------------------------------------
       - name: Check Android environment
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
           java -version
-          ls -la "$ANDROID_HOME"
+
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --version
 
       - name: Install Android SDK components
         run: |
-          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
 
-          yes | "$SDKMANAGER" --licenses || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
 
-          "$SDKMANAGER" "platform-tools"
-          "$SDKMANAGER" "platforms;android-35"
-          "$SDKMANAGER" "build-tools;35.0.0"
-
-      - name: Create NEXUS 0.8 project
-        shell: bash
+      # --------------------------------------------------
+      # 4. GRADLE 9.5 WRAPPER'I ÖNCE OLUŞTUR
+      #
+      # ÖNEMLİ:
+      # Android projesini oluşturmadan önce yapıyoruz.
+      # Böylece sistem Gradle 9.8'in AGP'yi yükleyip
+      # wrapper oluşturma aşamasında patlamasını engelliyoruz.
+      # --------------------------------------------------
+      - name: Prepare Gradle wrapper
         run: |
-          rm -rf app
+          mkdir -p gradle/wrapper
 
+          cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+
+          rootProject.name = "NEXUS"
+          EOF
+
+          cat > build.gradle <<'EOF'
+          plugins {
+              // Android plugin project oluşturulduktan sonra
+              // app modülünde kullanılacak.
+          }
+          EOF
+
+          gradle wrapper --gradle-version 9.5
+
+          chmod +x gradlew
+
+          ./gradlew --version
+
+      # --------------------------------------------------
+      # 5. NEXUS 0.8 PROJESİNİ OLUŞTUR
+      # --------------------------------------------------
+      - name: Create NEXUS 0.8 project
+        run: |
           mkdir -p app/src/main/java/com/nexus/app
           mkdir -p app/src/main/res/values
           mkdir -p app/src/test/java/com/nexus/app
@@ -62,11 +108,8 @@ jobs:
               repositories {
                   google()
                   mavenCentral()
-
                   maven {
-                      url = uri(
-                          "https://build-artifacts.signal.org/libraries/maven/"
-                      )
+                      url = uri("https://build-artifacts.signal.org/libraries/maven/")
                   }
               }
           }
@@ -104,7 +147,7 @@ jobs:
                   versionCode 8
                   versionName '0.8.0-relay'
 
-                  testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+                  testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
               }
 
               compileOptions {
@@ -114,59 +157,50 @@ jobs:
                   targetCompatibility JavaVersion.VERSION_17
               }
 
-              packaging {
-                  resources {
-                      excludes += [
-                          "META-INF/DEPENDENCIES",
-                          "META-INF/LICENSE",
-                          "META-INF/LICENSE.txt",
-                          "META-INF/NOTICE",
-                          "META-INF/NOTICE.txt"
-                      ]
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                  }
+
+                  debug {
+                      minifyEnabled false
                   }
               }
           }
 
           dependencies {
-              implementation 'androidx.appcompat:appcompat:1.7.1'
-              implementation 'androidx.core:core:1.17.0'
+              implementation 'androidx.appcompat:appcompat:1.7.0'
+              implementation 'androidx.core:core:1.15.0'
 
               implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 
               implementation 'org.signal:libsignal-client:0.102.2'
               implementation 'org.signal:libsignal-android:0.102.2'
 
-              coreLibraryDesugaring \
-                  'com.android.tools:desugar_jdk_libs:2.1.5'
+              coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
 
               testImplementation 'junit:junit:4.13.2'
           }
           EOF
 
           cat > app/src/main/AndroidManifest.xml <<'EOF'
-          <manifest
-              xmlns:android="http://schemas.android.com/apk/res/android">
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-              <uses-permission
-                  android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.INTERNET" />
 
               <application
                   android:allowBackup="false"
-                  android:usesCleartextTraffic="false"
                   android:label="NEXUS"
+                  android:supportsRtl="true"
                   android:theme="@style/AppTheme">
 
                   <activity
                       android:name=".MainActivity"
-                      android:screenOrientation="portrait"
                       android:exported="true">
 
                       <intent-filter>
-                          <action
-                              android:name="android.intent.action.MAIN" />
-
-                          <category
-                              android:name="android.intent.category.LAUNCHER" />
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
                       </intent-filter>
 
                   </activity>
@@ -179,397 +213,125 @@ jobs:
           cat > app/src/main/res/values/styles.xml <<'EOF'
           <resources>
 
-              <style
-                  name="AppTheme"
-                  parent="android:style/Theme.Material.NoActionBar">
+              <style name="AppTheme"
+                  parent="Theme.AppCompat.DayNight.NoActionBar">
 
                   <item name="android:fontFamily">sans</item>
-
-                  <item
-                      name="android:windowLightStatusBar">
-                      false
-                  </item>
-
-                  <item
-                      name="android:statusBarColor">
-                      #080808
-                  </item>
-
-                  <item
-                      name="android:navigationBarColor">
-                      #080808
-                  </item>
-
-                  <item
-                      name="android:colorAccent">
-                      #00E5FF
-                  </item>
+                  <item name="android:windowLightStatusBar">false</item>
+                  <item name="android:statusBarColor">#000000</item>
+                  <item name="android:navigationBarColor">#000000</item>
 
               </style>
 
           </resources>
           EOF
 
-          cat > app/src/main/java/com/nexus/app/MainActivity.java <<'EOF'
-          package com.nexus.app;
-
-          import android.app.Activity;
-          import android.os.Bundle;
-          import android.view.WindowManager;
-          import android.graphics.Color;
-          import android.graphics.Typeface;
-          import android.view.Gravity;
-          import android.widget.*;
-
-          public class MainActivity extends Activity {
-
-              private TextView status;
-              private RelayClient relay;
-
-              @Override
-              protected void onCreate(
-                  Bundle savedInstanceState
-              ) {
-                  super.onCreate(savedInstanceState);
-
-                  getWindow().setFlags(
-                      WindowManager.LayoutParams.FLAG_SECURE,
-                      WindowManager.LayoutParams.FLAG_SECURE
-                  );
-
-                  buildUi();
-
-                  relay = new RelayClient(
-                      "wss://relay.nexus.local/ws",
-                      this::updateStatus
-                  );
-              }
-
-              private TextView text(
-                  String value,
-                  int size
-              ) {
-                  TextView t =
-                      new TextView(this);
-
-                  t.setText(value);
-                  t.setTextSize(size);
-                  t.setTextColor(Color.WHITE);
-
-                  t.setPadding(
-                      24,
-                      14,
-                      24,
-                      14
-                  );
-
-                  return t;
-              }
-
-              private void buildUi() {
-
-                  LinearLayout root =
-                      new LinearLayout(this);
-
-                  root.setOrientation(
-                      LinearLayout.VERTICAL
-                  );
-
-                  root.setBackgroundColor(
-                      Color.rgb(8, 8, 8)
-                  );
-
-                  root.setPadding(
-                      20,
-                      20,
-                      20,
-                      20
-                  );
-
-                  TextView title =
-                      text("NEXUS", 30);
-
-                  title.setTypeface(
-                      Typeface.DEFAULT,
-                      Typeface.BOLD
-                  );
-
-                  title.setGravity(
-                      Gravity.CENTER
-                  );
-
-                  TextView version =
-                      text(
-                          "0.8.0 • RELAY",
-                          13
-                      );
-
-                  version.setGravity(
-                      Gravity.CENTER
-                  );
-
-                  version.setTextColor(
-                      Color.LTGRAY
-                  );
-
-                  TextView identity =
-                      text(
-                          "NEXUS ID: "
-                          + IdentityStore.getNexusId(this)
-                          + "\nFingerprint: "
-                          + IdentityStore.getFingerprint(this),
-                          13
-                      );
-
-                  status =
-                      text(
-                          "● RELAY: BAĞLI DEĞİL",
-                          16
-                      );
-
-                  Button connect =
-                      new Button(this);
-
-                  connect.setText(
-                      "GÜVENLİ BAĞLANTIYI BAŞLAT"
-                  );
-
-                  connect.setOnClickListener(
-                      v -> {
-
-                          updateStatus(
-                              "● RELAY: BAĞLANIYOR..."
-                          );
-
-                          relay.connect();
-                      }
-                  );
-
-                  Button disconnect =
-                      new Button(this);
-
-                  disconnect.setText(
-                      "BAĞLANTIYI KES"
-                  );
-
-                  disconnect.setOnClickListener(
-                      v -> {
-
-                          relay.disconnect();
-
-                          updateStatus(
-                              "● RELAY: BAĞLI DEĞİL"
-                          );
-                      }
-                  );
-
-                  TextView info =
-                      text(
-                          "BLIND RELAY\n\n"
-                          + "Relay mesaj içeriğini okuyamaz.\n\n"
-                          + "Bu sürüm ağ taşıma katmanını hazırlar.\n\n"
-                          + "Gerçek Signal E2EE oturumu "
-                          + "bir sonraki aşamada kurulacaktır.\n\n"
-                          + "TLS/WSS • Replay Protection\n"
-                          + "Message ID • Reconnect",
-                          14
-                      );
-
-                  root.addView(title);
-                  root.addView(version);
-                  root.addView(identity);
-                  root.addView(status);
-                  root.addView(connect);
-                  root.addView(disconnect);
-                  root.addView(info);
-
-                  setContentView(root);
-              }
-
-              private void updateStatus(
-                  String value
-              ) {
-                  runOnUiThread(
-                      () -> status.setText(value)
-                  );
-              }
-          }
-          EOF
-
+      # --------------------------------------------------
+      # 6. IDENTITY STORE
+      # --------------------------------------------------
+      - name: Create IdentityStore
+        run: |
           cat > app/src/main/java/com/nexus/app/IdentityStore.java <<'EOF'
           package com.nexus.app;
 
           import android.content.Context;
-          import android.content.SharedPreferences;
-          import android.security.keystore.KeyGenParameterSpec;
-          import android.security.keystore.KeyProperties;
 
+          import java.nio.charset.StandardCharsets;
+          import java.security.KeyPair;
           import java.security.KeyPairGenerator;
           import java.security.KeyStore;
           import java.security.MessageDigest;
+          import java.security.PublicKey;
+          import java.security.spec.ECGenParameterSpec;
 
           public final class IdentityStore {
 
-              private static final String ALIAS =
-                  "nexus_device_identity_v1";
-
-              private static final String PREF =
-                  "nexus_identity";
+              private static final String KEY_ALIAS =
+                      "nexus_device_identity_v1";
 
               private IdentityStore() {}
 
-              public static String getNexusId(
-                  Context context
-              ) {
+              public static KeyPair getOrCreateIdentity() throws Exception {
 
-                  SharedPreferences p =
-                      context.getSharedPreferences(
-                          PREF,
-                          Context.MODE_PRIVATE
-                      );
+                  KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
+                  keyStore.load(null);
 
-                  String id =
-                      p.getString(
-                          "nexus_id",
-                          null
-                      );
+                  if (keyStore.containsAlias(KEY_ALIAS)) {
 
-                  if (id == null) {
+                      KeyStore.Entry entry =
+                              keyStore.getEntry(KEY_ALIAS, null);
 
-                      id =
-                          "NX-"
-                          + randomPart()
-                          + "-"
-                          + randomPart()
-                          + "-"
-                          + randomPart();
+                      if (entry instanceof KeyStore.PrivateKeyEntry) {
 
-                      p.edit()
-                          .putString(
-                              "nexus_id",
-                              id
-                          )
-                          .apply();
+                          KeyStore.PrivateKeyEntry privateEntry =
+                                  (KeyStore.PrivateKeyEntry) entry;
+
+                          return new KeyPair(
+                                  privateEntry.getCertificate().getPublicKey(),
+                                  privateEntry.getPrivateKey()
+                          );
+                      }
                   }
 
-                  ensureKey();
-
-                  return id;
-              }
-
-              public static String getFingerprint(
-                  Context context
-              ) {
-
-                  getNexusId(context);
-
-                  try {
-
-                      KeyStore ks =
-                          KeyStore.getInstance(
-                              "AndroidKeyStore"
+                  KeyPairGenerator generator =
+                          KeyPairGenerator.getInstance(
+                                  "EC",
+                                  "AndroidKeyStore"
                           );
 
-                      ks.load(null);
+                  generator.initialize(
+                          new ECGenParameterSpec("secp256r1")
+                  );
 
-                      byte[] encoded =
-                          ks.getCertificate(ALIAS)
-                            .getPublicKey()
-                            .getEncoded();
+                  return generator.generateKeyPair();
+              }
 
-                      byte[] digest =
-                          MessageDigest
-                              .getInstance("SHA-256")
-                              .digest(encoded);
+              public static String fingerprint(PublicKey publicKey)
+                      throws Exception {
 
-                      StringBuilder sb =
+                  MessageDigest digest =
+                          MessageDigest.getInstance("SHA-256");
+
+                  byte[] hash =
+                          digest.digest(publicKey.getEncoded());
+
+                  StringBuilder result =
                           new StringBuilder();
 
-                      for (byte b : digest) {
-
-                          sb.append(
-                              String.format(
-                                  "%02X",
-                                  b
-                              )
-                          );
-                      }
-
-                      return sb.substring(
-                          0,
-                          32
+                  for (byte b : hash) {
+                      result.append(
+                              String.format("%02X", b)
                       );
-
-                  } catch (Exception e) {
-
-                      return "UNAVAILABLE";
                   }
+
+                  return result
+                          .substring(0, 32);
               }
 
-              private static void ensureKey() {
+              public static String getFingerprint(Context context)
+                      throws Exception {
 
-                  try {
+                  KeyPair pair =
+                          getOrCreateIdentity();
 
-                      KeyStore ks =
-                          KeyStore.getInstance(
-                              "AndroidKeyStore"
-                          );
-
-                      ks.load(null);
-
-                      if (
-                          ks.containsAlias(ALIAS)
-                      ) {
-                          return;
-                      }
-
-                      KeyPairGenerator generator =
-                          KeyPairGenerator.getInstance(
-                              KeyProperties.KEY_ALGORITHM_EC,
-                              "AndroidKeyStore"
-                          );
-
-                      KeyGenParameterSpec spec =
-                          new KeyGenParameterSpec.Builder(
-                              ALIAS,
-                              KeyProperties.PURPOSE_SIGN
-                                  | KeyProperties.PURPOSE_VERIFY
-                          )
-                          .setAlgorithmParameterSpec(
-                              new java.security.spec.ECGenParameterSpec(
-                                  "secp256r1"
-                              )
-                          )
-                          .setDigests(
-                              KeyProperties.DIGEST_SHA256
-                          )
-                          .build();
-
-                      generator.initialize(spec);
-                      generator.generateKeyPair();
-
-                  } catch (Exception ignored) {
-                  }
-              }
-
-              private static String randomPart() {
-
-                  return String.format(
-                      "%04X",
-                      (int)(
-                          Math.random()
-                          * 65536
-                      )
+                  return fingerprint(
+                          pair.getPublic()
                   );
               }
           }
           EOF
 
+      # --------------------------------------------------
+      # 7. RELAY ENVELOPE
+      # --------------------------------------------------
+      - name: Create RelayEnvelope
+        run: |
           cat > app/src/main/java/com/nexus/app/RelayEnvelope.java <<'EOF'
           package com.nexus.app;
 
+          import android.util.Base64;
+
           import java.nio.charset.StandardCharsets;
-          import java.util.Base64;
           import java.util.UUID;
 
           public final class RelayEnvelope {
@@ -578,431 +340,608 @@ jobs:
               public final String sender;
               public final String recipient;
               public final long timestamp;
-              public final long expiration;
+              public final long expiresAt;
               public final String ciphertext;
 
               public RelayEnvelope(
-                  String sender,
-                  String recipient,
-                  String ciphertext,
-                  long expiration
+                      String sender,
+                      String recipient,
+                      String ciphertext
               ) {
 
                   this.messageId =
-                      UUID.randomUUID().toString();
+                          UUID.randomUUID().toString();
 
                   this.sender = sender;
                   this.recipient = recipient;
 
                   this.timestamp =
-                      System.currentTimeMillis();
+                          System.currentTimeMillis();
 
-                  this.expiration = expiration;
-                  this.ciphertext = ciphertext;
+                  this.expiresAt =
+                          timestamp + 60_000L;
+
+                  this.ciphertext =
+                          ciphertext;
               }
 
               public String serialize() {
 
                   String raw =
-                      messageId + "|"
-                      + sender + "|"
-                      + recipient + "|"
-                      + timestamp + "|"
-                      + expiration + "|"
-                      + ciphertext;
+                          messageId + "|" +
+                          sender + "|" +
+                          recipient + "|" +
+                          timestamp + "|" +
+                          expiresAt + "|" +
+                          ciphertext;
 
-                  return Base64.getEncoder()
-                      .encodeToString(
+                  return Base64.encodeToString(
                           raw.getBytes(
-                              StandardCharsets.UTF_8
-                          )
-                      );
-              }
-
-              public static String opaqueCiphertext(
-                  byte[] encryptedData
-              ) {
-
-                  return Base64.getEncoder()
-                      .encodeToString(
-                          encryptedData
-                      );
+                                  StandardCharsets.UTF_8
+                          ),
+                          Base64.NO_WRAP
+                  );
               }
           }
           EOF
 
+      # --------------------------------------------------
+      # 8. REPLAY GUARD
+      # --------------------------------------------------
+      - name: Create ReplayGuard
+        run: |
           cat > app/src/main/java/com/nexus/app/ReplayGuard.java <<'EOF'
           package com.nexus.app;
 
-          import java.util.Collections;
           import java.util.LinkedHashMap;
           import java.util.Map;
 
           public final class ReplayGuard {
 
-              private static final int MAX_ENTRIES =
-                  2048;
+              private static final int MAX_ENTRIES = 2048;
 
               private final Map<String, Boolean> seen =
-                  Collections.synchronizedMap(
                       new LinkedHashMap<String, Boolean>(
-                          MAX_ENTRIES,
-                          0.75f,
-                          true
+                              256,
+                              0.75f,
+                              true
                       ) {
 
                           @Override
-                          protected boolean
-                          removeEldestEntry(
-                              Map.Entry<String, Boolean> eldest
+                          protected boolean removeEldestEntry(
+                                  Map.Entry<String, Boolean> eldest
                           ) {
 
-                              return size()
-                                  > MAX_ENTRIES;
+                              return size() > MAX_ENTRIES;
                           }
-                      }
-                  );
+                      };
 
-              public boolean accept(
-                  String messageId
+              public synchronized boolean accept(
+                      String messageId
               ) {
 
-                  if (
-                      messageId == null
-                      || messageId.isEmpty()
-                  ) {
+                  if (messageId == null ||
+                          messageId.isEmpty()) {
                       return false;
                   }
 
-                  synchronized (seen) {
-
-                      if (
-                          seen.containsKey(
-                              messageId
-                          )
-                      ) {
-                          return false;
-                      }
-
-                      seen.put(
-                          messageId,
-                          Boolean.TRUE
-                      );
-
-                      return true;
+                  if (seen.containsKey(messageId)) {
+                      return false;
                   }
+
+                  seen.put(messageId, Boolean.TRUE);
+
+                  return true;
               }
           }
           EOF
 
+      # --------------------------------------------------
+      # 9. RELAY CLIENT
+      # --------------------------------------------------
+      - name: Create RelayClient
+        run: |
           cat > app/src/main/java/com/nexus/app/RelayClient.java <<'EOF'
           package com.nexus.app;
 
-          import java.util.concurrent.TimeUnit;
-
           import okhttp3.OkHttpClient;
           import okhttp3.Request;
-          import okhttp3.Response;
           import okhttp3.WebSocket;
           import okhttp3.WebSocketListener;
+
+          import java.util.concurrent.TimeUnit;
 
           public final class RelayClient {
 
               public interface Listener {
-                  void onStatus(String status);
+
+                  void onConnected();
+
+                  void onDisconnected();
+
+                  void onMessage(String text);
+
+                  void onError(String message);
               }
 
-              private final String url;
-              private final Listener listener;
               private final OkHttpClient client;
 
-              private WebSocket socket;
-
-              private int reconnectAttempt = 0;
-
-              private boolean manuallyClosed =
-                  false;
-
               private final ReplayGuard replayGuard =
-                  new ReplayGuard();
+                      new ReplayGuard();
 
-              public RelayClient(
-                  String url,
-                  Listener listener
-              ) {
+              private final Listener listener;
 
-                  this.url = url;
+              private WebSocket webSocket;
+
+              private boolean connected = false;
+
+              public RelayClient(Listener listener) {
+
                   this.listener = listener;
 
                   client =
-                      new OkHttpClient.Builder()
-                          .connectTimeout(
-                              10,
-                              TimeUnit.SECONDS
-                          )
-                          .readTimeout(
-                              0,
-                              TimeUnit.MILLISECONDS
-                          )
-                          .pingInterval(
-                              20,
-                              TimeUnit.SECONDS
-                          )
-                          .build();
+                          new OkHttpClient.Builder()
+                                  .connectTimeout(
+                                          15,
+                                          TimeUnit.SECONDS
+                                  )
+                                  .readTimeout(
+                                          0,
+                                          TimeUnit.MILLISECONDS
+                                  )
+                                  .build();
               }
 
-              public void connect() {
-
-                  manuallyClosed = false;
+              public void connect(String url) {
 
                   Request request =
-                      new Request.Builder()
-                          .url(url)
-                          .build();
+                          new Request.Builder()
+                                  .url(url)
+                                  .build();
 
-                  socket =
-                      client.newWebSocket(
-                          request,
-                          new WebSocketListener() {
+                  webSocket =
+                          client.newWebSocket(
+                                  request,
+                                  new WebSocketListener() {
 
-                              @Override
-                              public void onOpen(
-                                  WebSocket webSocket,
-                                  Response response
-                              ) {
+                                      @Override
+                                      public void onOpen(
+                                              WebSocket webSocket,
+                                              okhttp3.Response response
+                                      ) {
 
-                                  reconnectAttempt = 0;
+                                          connected = true;
 
-                                  listener.onStatus(
-                                      "● RELAY: BAĞLI"
-                                  );
-                              }
+                                          if (listener != null) {
+                                              listener.onConnected();
+                                          }
+                                      }
 
-                              @Override
-                              public void onMessage(
-                                  WebSocket webSocket,
-                                  String text
-                              ) {
+                                      @Override
+                                      public void onMessage(
+                                              WebSocket webSocket,
+                                              String text
+                                      ) {
 
-                                  listener.onStatus(
-                                      "● RELAY: ŞİFRELİ VERİ ALINDI"
-                                  );
-                              }
+                                          if (listener != null) {
+                                              listener.onMessage(text);
+                                          }
+                                      }
 
-                              @Override
-                              public void onClosing(
-                                  WebSocket webSocket,
-                                  int code,
-                                  String reason
-                              ) {
+                                      @Override
+                                      public void onClosing(
+                                              WebSocket webSocket,
+                                              int code,
+                                              String reason
+                                      ) {
 
-                                  listener.onStatus(
-                                      "● RELAY: KAPANIYOR"
-                                  );
-                              }
+                                          connected = false;
 
-                              @Override
-                              public void onClosed(
-                                  WebSocket webSocket,
-                                  int code,
-                                  String reason
-                              ) {
+                                          webSocket.close(
+                                                  code,
+                                                  reason
+                                          );
 
-                                  listener.onStatus(
-                                      "● RELAY: BAĞLANTI KESİLDİ"
-                                  );
+                                          if (listener != null) {
+                                              listener.onDisconnected();
+                                          }
+                                      }
 
-                                  scheduleReconnect();
-                              }
+                                      @Override
+                                      public void onFailure(
+                                              WebSocket webSocket,
+                                              Throwable t,
+                                              okhttp3.Response response
+                                      ) {
 
-                              @Override
-                              public void onFailure(
-                                  WebSocket webSocket,
-                                  Throwable t,
-                                  Response response
-                              ) {
+                                          connected = false;
 
-                                  listener.onStatus(
-                                      "● RELAY: BAĞLANTI BAŞARISIZ"
-                                  );
-
-                                  scheduleReconnect();
-                              }
-                          }
-                      );
-              }
-
-              private void scheduleReconnect() {
-
-                  if (manuallyClosed) {
-                      return;
-                  }
-
-                  reconnectAttempt++;
-
-                  long delay =
-                      Math.min(
-                          30000L,
-                          1000L * (
-                              1L << Math.min(
-                                  reconnectAttempt - 1,
-                                  5
-                              )
-                          )
-                      );
-
-                  new android.os.Handler(
-                      android.os.Looper.getMainLooper()
-                  ).postDelayed(
-                      this::connect,
-                      delay
-                  );
+                                          if (listener != null) {
+                                              listener.onError(
+                                                      t.getMessage() == null
+                                                              ? "Relay error"
+                                                              : t.getMessage()
+                                              );
+                                          }
+                                      }
+                                  }
+                          );
               }
 
               public boolean send(
-                  RelayEnvelope envelope
+                      String payload
               ) {
 
-                  if (socket == null) {
+                  if (!connected ||
+                          webSocket == null) {
                       return false;
                   }
 
-                  return socket.send(
-                      envelope.serialize()
-                  );
-              }
-
-              public boolean acceptMessage(
-                  String messageId
-              ) {
-
-                  return replayGuard.accept(
-                      messageId
-                  );
+                  return webSocket.send(payload);
               }
 
               public void disconnect() {
 
-                  manuallyClosed = true;
+                  if (webSocket != null) {
 
-                  if (socket != null) {
-
-                      socket.close(
-                          1000,
-                          "NEXUS user disconnect"
+                      webSocket.close(
+                              1000,
+                              "NEXUS disconnect"
                       );
 
-                      socket = null;
+                      webSocket = null;
                   }
+
+                  connected = false;
+              }
+
+              public boolean isConnected() {
+                  return connected;
+              }
+
+              public boolean acceptMessage(
+                      String messageId
+              ) {
+
+                  return replayGuard.accept(
+                          messageId
+                  );
               }
           }
           EOF
 
+      # --------------------------------------------------
+      # 10. MAIN ACTIVITY
+      # --------------------------------------------------
+      - name: Create MainActivity
+        run: |
+          cat > app/src/main/java/com/nexus/app/MainActivity.java <<'EOF'
+          package com.nexus.app;
+
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.view.View;
+          import android.view.WindowManager;
+          import android.widget.Button;
+          import android.widget.LinearLayout;
+          import android.widget.TextView;
+
+          public class MainActivity extends Activity {
+
+              private static final String RELAY_URL =
+                      "wss://relay.nexus.local/ws";
+
+              private TextView status;
+
+              private RelayClient relayClient;
+
+              @Override
+              protected void onCreate(
+                      Bundle savedInstanceState
+              ) {
+
+                  super.onCreate(savedInstanceState);
+
+                  getWindow().setFlags(
+                          WindowManager.LayoutParams.FLAG_SECURE,
+                          WindowManager.LayoutParams.FLAG_SECURE
+                  );
+
+                  LinearLayout root =
+                          new LinearLayout(this);
+
+                  root.setOrientation(
+                          LinearLayout.VERTICAL
+                  );
+
+                  root.setPadding(
+                          40,
+                          50,
+                          40,
+                          40
+                  );
+
+                  TextView title =
+                          new TextView(this);
+
+                  title.setText(
+                          "NEXUS"
+                  );
+
+                  title.setTextSize(34);
+
+                  root.addView(title);
+
+                  TextView version =
+                          new TextView(this);
+
+                  version.setText(
+                          "0.8.0 • Relay Foundation"
+                  );
+
+                  version.setTextSize(16);
+
+                  root.addView(version);
+
+                  TextView identity =
+                          new TextView(this);
+
+                  try {
+
+                      identity.setText(
+                              "Fingerprint\n" +
+                              IdentityStore.getFingerprint(
+                                      this
+                              )
+                      );
+
+                  } catch (Exception e) {
+
+                      identity.setText(
+                              "Fingerprint unavailable"
+                      );
+                  }
+
+                  identity.setPadding(
+                          0,
+                          40,
+                          0,
+                          30
+                  );
+
+                  root.addView(identity);
+
+                  status =
+                          new TextView(this);
+
+                  status.setText(
+                          "Relay: bağlı değil"
+                  );
+
+                  status.setTextSize(18);
+
+                  root.addView(status);
+
+                  Button connect =
+                          new Button(this);
+
+                  connect.setText(
+                          "Güvenli bağlantı başlat"
+                  );
+
+                  connect.setOnClickListener(
+                          v -> connectRelay()
+                  );
+
+                  root.addView(connect);
+
+                  Button disconnect =
+                          new Button(this);
+
+                  disconnect.setText(
+                          "Bağlantıyı kes"
+                  );
+
+                  disconnect.setOnClickListener(
+                          v -> {
+
+                              if (relayClient != null) {
+                                  relayClient.disconnect();
+                              }
+
+                              status.setText(
+                                      "Relay: bağlı değil"
+                              );
+                          }
+                  );
+
+                  root.addView(disconnect);
+
+                  TextView info =
+                          new TextView(this);
+
+                  info.setText(
+                          "\nNEXUS güvenlik temeli:\n" +
+                          "• Android Keystore kimlik anahtarı\n" +
+                          "• Ekran görüntüsü engelleme\n" +
+                          "• WebSocket relay katmanı\n" +
+                          "• Replay koruması\n" +
+                          "• Signal Protocol bağımlılıkları\n\n" +
+                          "Gerçek relay sunucusu henüz bağlı değil."
+                  );
+
+                  info.setPadding(
+                          0,
+                          30,
+                          0,
+                          0
+                  );
+
+                  root.addView(info);
+
+                  setContentView(root);
+              }
+
+              private void connectRelay() {
+
+                  status.setText(
+                          "Relay: bağlanıyor..."
+                  );
+
+                  relayClient =
+                          new RelayClient(
+                                  new RelayClient.Listener() {
+
+                                      @Override
+                                      public void onConnected() {
+
+                                          runOnUiThread(() ->
+                                                  status.setText(
+                                                          "Relay: bağlı"
+                                                  )
+                                          );
+                                      }
+
+                                      @Override
+                                      public void onDisconnected() {
+
+                                          runOnUiThread(() ->
+                                                  status.setText(
+                                                          "Relay: bağlantı kesildi"
+                                                  )
+                                          );
+                                      }
+
+                                      @Override
+                                      public void onMessage(
+                                              String text
+                                      ) {
+
+                                          runOnUiThread(() ->
+                                                  status.setText(
+                                                          "Relay mesajı alındı"
+                                                  )
+                                          );
+                                      }
+
+                                      @Override
+                                      public void onError(
+                                              String message
+                                      ) {
+
+                                          runOnUiThread(() ->
+                                                  status.setText(
+                                                          "Relay: " +
+                                                          message
+                                                  )
+                                          );
+                                      }
+                                  }
+                          );
+
+                  relayClient.connect(
+                          RELAY_URL
+                  );
+              }
+          }
+          EOF
+
+      # --------------------------------------------------
+      # 11. UNIT TESTLER
+      # --------------------------------------------------
+      - name: Create tests
+        run: |
           cat > app/src/test/java/com/nexus/app/RelayEnvelopeTest.java <<'EOF'
           package com.nexus.app;
 
           import org.junit.Test;
 
-          import static org.junit.Assert.*;
+          import static org.junit.Assert.assertNotEquals;
+          import static org.junit.Assert.assertTrue;
 
           public class RelayEnvelopeTest {
 
               @Test
-              public void envelopeHasUniqueMessageId() {
+              public void messageIdsAreUnique() {
 
                   RelayEnvelope a =
-                      new RelayEnvelope(
-                          "NX-A",
-                          "NX-B",
-                          "OPAQUE-A",
-                          System.currentTimeMillis()
-                              + 60000
-                      );
+                          new RelayEnvelope(
+                                  "alice",
+                                  "bob",
+                                  "cipher-a"
+                          );
 
                   RelayEnvelope b =
-                      new RelayEnvelope(
-                          "NX-A",
-                          "NX-B",
-                          "OPAQUE-B",
-                          System.currentTimeMillis()
-                              + 60000
-                      );
+                          new RelayEnvelope(
+                                  "alice",
+                                  "bob",
+                                  "cipher-b"
+                          );
 
                   assertNotEquals(
-                      a.messageId,
-                      b.messageId
+                          a.messageId,
+                          b.messageId
+                  );
+              }
+
+              @Test
+              public void replayGuardRejectsDuplicate() {
+
+                  ReplayGuard guard =
+                          new ReplayGuard();
+
+                  assertTrue(
+                          guard.accept("message-1")
+                  );
+
+                  assertTrue(
+                          !guard.accept("message-1")
+                  );
+              }
+
+              @Test
+              public void replayGuardAcceptsDifferentMessages() {
+
+                  ReplayGuard guard =
+                          new ReplayGuard();
+
+                  assertTrue(
+                          guard.accept("message-1")
+                  );
+
+                  assertTrue(
+                          guard.accept("message-2")
                   );
               }
           }
           EOF
 
-          cat > app/src/test/java/com/nexus/app/ReplayGuardTest.java <<'EOF'
-          package com.nexus.app;
-
-          import org.junit.Test;
-
-          import static org.junit.Assert.*;
-
-          public class ReplayGuardTest {
-
-              @Test
-              public void duplicateMessageIsRejected() {
-
-                  ReplayGuard guard =
-                      new ReplayGuard();
-
-                  assertTrue(
-                      guard.accept(
-                          "message-001"
-                      )
-                  );
-
-                  assertFalse(
-                      guard.accept(
-                          "message-001"
-                      )
-                  );
-              }
-
-              @Test
-              public void differentMessagesAreAccepted() {
-
-                  ReplayGuard guard =
-                      new ReplayGuard();
-
-                  assertTrue(
-                      guard.accept(
-                          "message-001"
-                      )
-                  );
-
-                  assertTrue(
-                      guard.accept(
-                          "message-002"
-                      )
-                  );
-              }
-          }
-          EOF
-
-      - name: Generate Gradle wrapper
-        run: |
-          gradle wrapper --gradle-version 8.13
-
+      # --------------------------------------------------
+      # 12. UNIT TEST
+      # --------------------------------------------------
       - name: Run unit tests
         run: |
-          ./gradlew test --no-daemon --stacktrace
+          ./gradlew test
 
-      - name: Build NEXUS 0.8
+      # --------------------------------------------------
+      # 13. DEBUG APK
+      # --------------------------------------------------
+      - name: Build debug APK
         run: |
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleDebug
 
+      # --------------------------------------------------
+      # 14. APK KONTROL
+      # --------------------------------------------------
       - name: Verify APK
         run: |
           ls -lh app/build/outputs/apk/debug/
           sha256sum app/build/outputs/apk/debug/app-debug.apk
 
-      - name: Upload NEXUS 0.8 APK
+      # --------------------------------------------------
+      # 15. APK ARTIFACT
+      # --------------------------------------------------
+      - name: Upload NEXUS APK
         uses: actions/upload-artifact@v4
         with:
           name: NEXUS-RELAY-debug-APK
