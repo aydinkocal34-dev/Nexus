@@ -31,7 +31,7 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Create NEXUS E2EE project
+      - name: Create NEXUS project
         shell: bash
         run: |
           mkdir -p app/src/main/java/com/nexus/app
@@ -86,8 +86,8 @@ jobs:
                   applicationId 'com.nexus.app'
                   minSdk 26
                   targetSdk 35
-                  versionCode 3
-                  versionName '0.3.0-e2ee'
+                  versionCode 4
+                  versionName '0.4.0'
               }
 
               compileOptions {
@@ -147,8 +147,8 @@ jobs:
                   parent="android:style/Theme.Material.NoActionBar">
                   <item name="android:fontFamily">sans</item>
                   <item name="android:colorAccent">#00C2FF</item>
-                  <item name="android:statusBarColor">#000000</item>
-                  <item name="android:navigationBarColor">#000000</item>
+                  <item name="android:statusBarColor">#080A0F</item>
+                  <item name="android:navigationBarColor">#080A0F</item>
               </style>
           </resources>
           EOF
@@ -158,12 +158,36 @@ jobs:
 
           import android.app.Activity;
           import android.os.Bundle;
-          import android.view.WindowManager;
+          import android.os.Handler;
           import android.graphics.Color;
+          import android.graphics.Typeface;
+          import android.view.Gravity;
+          import android.view.View;
+          import android.view.WindowManager;
+          import android.widget.Button;
+          import android.widget.EditText;
           import android.widget.LinearLayout;
+          import android.widget.ScrollView;
           import android.widget.TextView;
 
           public class MainActivity extends Activity {
+
+              private final int BG = Color.rgb(8,10,15);
+              private final int CARD = Color.rgb(20,24,32);
+              private final int BLUE = Color.rgb(0,194,255);
+              private final Handler handler = new Handler();
+
+              private int dp(int value) {
+                  return (int)(value * getResources().getDisplayMetrics().density + 0.5f);
+              }
+
+              private TextView text(String value, float size) {
+                  TextView t = new TextView(this);
+                  t.setText(value);
+                  t.setTextSize(size);
+                  t.setTextColor(Color.WHITE);
+                  return t;
+              }
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
@@ -174,36 +198,260 @@ jobs:
                       WindowManager.LayoutParams.FLAG_SECURE
                   );
 
-                  LinearLayout layout = new LinearLayout(this);
-                  layout.setOrientation(LinearLayout.VERTICAL);
-                  layout.setPadding(40, 60, 40, 40);
-                  layout.setBackgroundColor(Color.BLACK);
+                  showHome();
+              }
 
-                  TextView title = new TextView(this);
-                  title.setText("NEXUS");
-                  title.setTextSize(34);
-                  title.setTextColor(Color.WHITE);
+              private LinearLayout page(String title) {
+                  LinearLayout root = new LinearLayout(this);
+                  root.setOrientation(LinearLayout.VERTICAL);
+                  root.setPadding(dp(18), dp(24), dp(18), dp(18));
+                  root.setBackgroundColor(BG);
 
-                  TextView status = new TextView(this);
-                  status.setText(
-                      "SECURE MESSAGING\n\n" +
-                      "NEXUS E2EE FOUNDATION\n\n" +
-                      "✓ Signal libsignal loaded\n" +
-                      "✓ Core library desugaring\n" +
-                      "✓ Screenshot protection\n" +
-                      "✓ Screen recording protection\n" +
-                      "✓ Backup disabled\n" +
-                      "✓ Android Keystore foundation\n\n" +
-                      "E2EE FOUNDATION BUILD"
+                  TextView titleView = text(title, 28);
+                  titleView.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+
+                  root.addView(
+                      titleView,
+                      new LinearLayout.LayoutParams(-1, dp(55))
                   );
-                  status.setTextSize(17);
-                  status.setTextColor(Color.WHITE);
-                  status.setPadding(0, 40, 0, 0);
 
-                  layout.addView(title);
-                  layout.addView(status);
+                  return root;
+              }
 
-                  setContentView(layout);
+              private Button button(String value) {
+                  Button b = new Button(this);
+                  b.setText(value);
+                  b.setTextColor(Color.WHITE);
+                  b.setTextSize(16);
+                  b.setAllCaps(false);
+                  b.setBackgroundColor(CARD);
+                  return b;
+              }
+
+              private void showHome() {
+                  LinearLayout root = page("NEXUS");
+
+                  TextView subtitle =
+                      text("Özel ve güvenli mesajlaşma", 15);
+                  subtitle.setTextColor(Color.LTGRAY);
+
+                  root.addView(subtitle);
+
+                  TextView chats = text("Sohbetler", 20);
+                  chats.setPadding(0, dp(25), 0, dp(10));
+                  root.addView(chats);
+
+                  Button ali = button("Ali\nÇevrimiçi");
+                  root.addView(
+                      ali,
+                      new LinearLayout.LayoutParams(-1, dp(75))
+                  );
+
+                  ali.setOnClickListener(v -> showChat("Ali"));
+
+                  Button zeynep = button("Zeynep\nSon mesaj gizli");
+                  LinearLayout.LayoutParams zp =
+                      new LinearLayout.LayoutParams(-1, dp(75));
+                  zp.topMargin = dp(10);
+                  root.addView(zeynep, zp);
+
+                  zeynep.setOnClickListener(
+                      v -> showChat("Zeynep")
+                  );
+
+                  Button newChat = button("+ Yeni sohbet");
+
+                  LinearLayout.LayoutParams np =
+                      new LinearLayout.LayoutParams(-1, dp(60));
+                  np.topMargin = dp(20);
+
+                  root.addView(newChat, np);
+
+                  newChat.setOnClickListener(
+                      v -> showNewChat()
+                  );
+
+                  TextView info = text(
+                      "\nNEXUS E2EE\n\n" +
+                      "Mesaj içeriği bildirimlerde gösterilmez.\n" +
+                      "Ekran görüntüsü ve ekran kaydı korunur.",
+                      13
+                  );
+
+                  info.setTextColor(Color.GRAY);
+                  root.addView(info);
+
+                  setContentView(root);
+              }
+
+              private void showNewChat() {
+                  LinearLayout root = page("Yeni sohbet");
+
+                  EditText username = new EditText(this);
+                  username.setHint("Kullanıcı adı");
+                  username.setHintTextColor(Color.GRAY);
+                  username.setTextColor(Color.WHITE);
+
+                  root.addView(
+                      username,
+                      new LinearLayout.LayoutParams(-1, dp(60))
+                  );
+
+                  Button start = button("Sohbeti başlat");
+
+                  LinearLayout.LayoutParams p =
+                      new LinearLayout.LayoutParams(-1, dp(60));
+                  p.topMargin = dp(15);
+
+                  root.addView(start, p);
+
+                  start.setOnClickListener(v -> {
+                      String name =
+                          username.getText().toString().trim();
+
+                      if (name.isEmpty()) {
+                          name = "Yeni kişi";
+                      }
+
+                      showChat(name);
+                  });
+
+                  setContentView(root);
+              }
+
+              private void showChat(String person) {
+                  LinearLayout root = page(person);
+
+                  Button back = button("‹ Sohbetlere dön");
+                  root.addView(
+                      back,
+                      0,
+                      new LinearLayout.LayoutParams(-1, dp(48))
+                  );
+
+                  back.setOnClickListener(v -> showHome());
+
+                  ScrollView scroll = new ScrollView(this);
+
+                  LinearLayout messages =
+                      new LinearLayout(this);
+
+                  messages.setOrientation(
+                      LinearLayout.VERTICAL
+                  );
+
+                  messages.setPadding(
+                      0, dp(10), 0, dp(10)
+                  );
+
+                  scroll.addView(messages);
+
+                  root.addView(
+                      scroll,
+                      new LinearLayout.LayoutParams(
+                          -1, 0, 1
+                      )
+                  );
+
+                  LinearLayout inputBar =
+                      new LinearLayout(this);
+
+                  inputBar.setGravity(
+                      Gravity.CENTER_VERTICAL
+                  );
+
+                  EditText input = new EditText(this);
+                  input.setHint("Mesaj…");
+                  input.setHintTextColor(Color.GRAY);
+                  input.setTextColor(Color.WHITE);
+
+                  Button send = button("Gönder");
+
+                  inputBar.addView(
+                      input,
+                      new LinearLayout.LayoutParams(
+                          0, dp(60), 1
+                      )
+                  );
+
+                  inputBar.addView(
+                      send,
+                      new LinearLayout.LayoutParams(
+                          dp(95), dp(60)
+                      )
+                  );
+
+                  root.addView(inputBar);
+
+                  send.setOnClickListener(v -> {
+
+                      String message =
+                          input.getText().toString().trim();
+
+                      if (message.isEmpty()) {
+                          return;
+                      }
+
+                      addMessage(
+                          messages,
+                          message
+                      );
+
+                      input.setText("");
+
+                      scroll.post(
+                          () -> scroll.fullScroll(
+                              View.FOCUS_DOWN
+                          )
+                      );
+                  });
+
+                  setContentView(root);
+              }
+
+              private void addMessage(
+                  LinearLayout parent,
+                  String message
+              ) {
+
+                  TextView bubble =
+                      text(
+                          message +
+                          "\n\n✓ Okundu • 60 saniye",
+                          15
+                      );
+
+                  bubble.setTextColor(Color.WHITE);
+                  bubble.setPadding(
+                      dp(14),
+                      dp(10),
+                      dp(14),
+                      dp(10)
+                  );
+
+                  bubble.setBackgroundColor(
+                      Color.rgb(0,80,105)
+                  );
+
+                  LinearLayout.LayoutParams p =
+                      new LinearLayout.LayoutParams(
+                          -1,
+                          dp(85)
+                      );
+
+                  p.topMargin = dp(8);
+
+                  parent.addView(bubble, p);
+
+                  handler.postDelayed(() -> {
+
+                      if (bubble.getParent() != null) {
+                          ((LinearLayout)
+                              bubble.getParent())
+                              .removeView(bubble);
+                      }
+
+                  }, 60000);
               }
           }
           EOF
@@ -213,5 +461,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-E2EE-debug-APK
+          name: NEXUS-UI-debug-APK
           path: app/build/outputs/apk/debug/app-debug.apk
