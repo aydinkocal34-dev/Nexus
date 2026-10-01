@@ -22,7 +22,6 @@ jobs:
         run: |
           export ANDROID_HOME="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
-
           yes | sdkmanager --licenses > /dev/null || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
@@ -86,8 +85,8 @@ jobs:
                   applicationId 'com.nexus.app'
                   minSdk 26
                   targetSdk 35
-                  versionCode 4
-                  versionName '0.4.0'
+                  versionCode 5
+                  versionName '0.5.0-user'
               }
 
               compileOptions {
@@ -159,6 +158,8 @@ jobs:
           import android.app.Activity;
           import android.os.Bundle;
           import android.os.Handler;
+          import android.content.Context;
+          import android.content.SharedPreferences;
           import android.graphics.Color;
           import android.graphics.Typeface;
           import android.view.Gravity;
@@ -169,16 +170,19 @@ jobs:
           import android.widget.LinearLayout;
           import android.widget.ScrollView;
           import android.widget.TextView;
+          import java.util.UUID;
 
           public class MainActivity extends Activity {
 
               private final int BG = Color.rgb(8,10,15);
               private final int CARD = Color.rgb(20,24,32);
-              private final int BLUE = Color.rgb(0,194,255);
               private final Handler handler = new Handler();
 
+              private SharedPreferences prefs;
+
               private int dp(int value) {
-                  return (int)(value * getResources().getDisplayMetrics().density + 0.5f);
+                  return (int)(value *
+                      getResources().getDisplayMetrics().density + 0.5f);
               }
 
               private TextView text(String value, float size) {
@@ -198,21 +202,37 @@ jobs:
                       WindowManager.LayoutParams.FLAG_SECURE
                   );
 
-                  showHome();
+                  prefs = getSharedPreferences(
+                      "nexus_user",
+                      Context.MODE_PRIVATE
+                  );
+
+                  if (prefs.getBoolean("registered", false)) {
+                      showHome();
+                  } else {
+                      showWelcome();
+                  }
               }
 
               private LinearLayout page(String title) {
                   LinearLayout root = new LinearLayout(this);
                   root.setOrientation(LinearLayout.VERTICAL);
-                  root.setPadding(dp(18), dp(24), dp(18), dp(18));
+                  root.setPadding(
+                      dp(20), dp(30), dp(20), dp(20)
+                  );
                   root.setBackgroundColor(BG);
 
                   TextView titleView = text(title, 28);
-                  titleView.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+                  titleView.setTypeface(
+                      Typeface.DEFAULT,
+                      Typeface.BOLD
+                  );
 
                   root.addView(
                       titleView,
-                      new LinearLayout.LayoutParams(-1, dp(55))
+                      new LinearLayout.LayoutParams(
+                          -1, dp(60)
+                      )
                   );
 
                   return root;
@@ -228,42 +248,219 @@ jobs:
                   return b;
               }
 
-              private void showHome() {
-                  LinearLayout root = page("NEXUS");
+              private void showWelcome() {
 
-                  TextView subtitle =
-                      text("Özel ve güvenli mesajlaşma", 15);
+                  LinearLayout root =
+                      page("NEXUS");
+
+                  TextView subtitle = text(
+                      "Özel ve güvenli mesajlaşmaya hoş geldin.",
+                      17
+                  );
+
                   subtitle.setTextColor(Color.LTGRAY);
-
                   root.addView(subtitle);
 
-                  TextView chats = text("Sohbetler", 20);
-                  chats.setPadding(0, dp(25), 0, dp(10));
-                  root.addView(chats);
-
-                  Button ali = button("Ali\nÇevrimiçi");
-                  root.addView(
-                      ali,
-                      new LinearLayout.LayoutParams(-1, dp(75))
+                  TextView explanation = text(
+                      "\nÖnce NEXUS kimliğini oluşturalım.\n\n" +
+                      "Bu bilgiler şu aşamada yalnızca " +
+                      "bu telefonda saklanır.",
+                      15
                   );
 
-                  ali.setOnClickListener(v -> showChat("Ali"));
+                  explanation.setTextColor(Color.GRAY);
+                  root.addView(explanation);
 
-                  Button zeynep = button("Zeynep\nSon mesaj gizli");
-                  LinearLayout.LayoutParams zp =
-                      new LinearLayout.LayoutParams(-1, dp(75));
-                  zp.topMargin = dp(10);
-                  root.addView(zeynep, zp);
-
-                  zeynep.setOnClickListener(
-                      v -> showChat("Zeynep")
-                  );
-
-                  Button newChat = button("+ Yeni sohbet");
+                  EditText name = new EditText(this);
+                  name.setHint("Adın / kullanıcı adın");
+                  name.setHintTextColor(Color.GRAY);
+                  name.setTextColor(Color.WHITE);
 
                   LinearLayout.LayoutParams np =
-                      new LinearLayout.LayoutParams(-1, dp(60));
-                  np.topMargin = dp(20);
+                      new LinearLayout.LayoutParams(
+                          -1, dp(65)
+                      );
+                  np.topMargin = dp(25);
+
+                  root.addView(name, np);
+
+                  Button create =
+                      button("NEXUS kimliğimi oluştur");
+
+                  LinearLayout.LayoutParams cp =
+                      new LinearLayout.LayoutParams(
+                          -1, dp(65)
+                      );
+                  cp.topMargin = dp(15);
+
+                  root.addView(create, cp);
+
+                  TextView error =
+                      text("", 14);
+
+                  error.setTextColor(
+                      Color.rgb(255,100,100)
+                  );
+
+                  root.addView(error);
+
+                  create.setOnClickListener(v -> {
+
+                      String username =
+                          name.getText()
+                              .toString()
+                              .trim();
+
+                      if (username.length() < 3) {
+                          error.setText(
+                              "En az 3 karakter gir."
+                          );
+                          return;
+                      }
+
+                      String id =
+                          createNexusId();
+
+                      prefs.edit()
+                          .putBoolean("registered", true)
+                          .putString("username", username)
+                          .putString("nexus_id", id)
+                          .apply();
+
+                      showIdentity(username, id);
+                  });
+
+                  setContentView(root);
+              }
+
+              private String createNexusId() {
+
+                  String raw =
+                      UUID.randomUUID()
+                          .toString()
+                          .replace("-", "")
+                          .toUpperCase();
+
+                  return "NX-" +
+                      raw.substring(0,4) + "-" +
+                      raw.substring(4,8) + "-" +
+                      raw.substring(8,12);
+              }
+
+              private void showIdentity(
+                  String username,
+                  String id
+              ) {
+
+                  LinearLayout root =
+                      page("Kimliğin hazır");
+
+                  TextView welcome =
+                      text(
+                          "Hoş geldin, " +
+                          username + " 👋",
+                          22
+                      );
+
+                  welcome.setTypeface(
+                      Typeface.DEFAULT,
+                      Typeface.BOLD
+                  );
+
+                  root.addView(welcome);
+
+                  TextView idText =
+                      text(
+                          "\nSenin NEXUS ID'n:\n\n" +
+                          id +
+                          "\n\nBu ID'yi arkadaşların seni " +
+                          "bulmak için kullanacak.",
+                          17
+                      );
+
+                  idText.setTextColor(Color.LTGRAY);
+                  root.addView(idText);
+
+                  Button continueButton =
+                      button("NEXUS'a devam et");
+
+                  LinearLayout.LayoutParams p =
+                      new LinearLayout.LayoutParams(
+                          -1, dp(65)
+                      );
+
+                  p.topMargin = dp(30);
+
+                  root.addView(
+                      continueButton,
+                      p
+                  );
+
+                  continueButton.setOnClickListener(
+                      v -> showHome()
+                  );
+
+                  setContentView(root);
+              }
+
+              private void showHome() {
+
+                  LinearLayout root =
+                      page("NEXUS");
+
+                  String username =
+                      prefs.getString(
+                          "username",
+                          "Kullanıcı"
+                      );
+
+                  String id =
+                      prefs.getString(
+                          "nexus_id",
+                          "NX-UNKNOWN"
+                      );
+
+                  TextView profile =
+                      text(
+                          username + "\n" + id,
+                          15
+                      );
+
+                  profile.setTextColor(Color.LTGRAY);
+                  root.addView(profile);
+
+                  TextView chats =
+                      text("Sohbetler", 21);
+
+                  chats.setPadding(
+                      0, dp(25), 0, dp(10)
+                  );
+
+                  root.addView(chats);
+
+                  Button ali =
+                      button("Ali\nÇevrimiçi");
+
+                  root.addView(
+                      ali,
+                      new LinearLayout.LayoutParams(
+                          -1, dp(75)
+                      )
+                  );
+
+                  ali.setOnClickListener(
+                      v -> showChat("Ali")
+                  );
+
+                  Button newChat =
+                      button("+ Yeni sohbet");
+
+                  LinearLayout.LayoutParams np =
+                      new LinearLayout.LayoutParams(
+                          -1, dp(60)
+                      );
+
+                  np.topMargin = dp(15);
 
                   root.addView(newChat, np);
 
@@ -271,12 +468,12 @@ jobs:
                       v -> showNewChat()
                   );
 
-                  TextView info = text(
-                      "\nNEXUS E2EE\n\n" +
-                      "Mesaj içeriği bildirimlerde gösterilmez.\n" +
-                      "Ekran görüntüsü ve ekran kaydı korunur.",
-                      13
-                  );
+                  TextView info =
+                      text(
+                          "\nNEXUS ID'n ile diğer kullanıcılar " +
+                          "ilerleyen sürümlerde seni bulabilecek.",
+                          13
+                      );
 
                   info.setTextColor(Color.GRAY);
                   root.addView(info);
@@ -285,63 +482,76 @@ jobs:
               }
 
               private void showNewChat() {
-                  LinearLayout root = page("Yeni sohbet");
 
-                  EditText username = new EditText(this);
-                  username.setHint("Kullanıcı adı");
-                  username.setHintTextColor(Color.GRAY);
-                  username.setTextColor(Color.WHITE);
+                  LinearLayout root =
+                      page("Yeni sohbet");
 
-                  root.addView(
-                      username,
-                      new LinearLayout.LayoutParams(-1, dp(60))
+                  EditText id =
+                      new EditText(this);
+
+                  id.setHint(
+                      "NEXUS ID"
                   );
 
-                  Button start = button("Sohbeti başlat");
+                  id.setHintTextColor(Color.GRAY);
+                  id.setTextColor(Color.WHITE);
+
+                  root.addView(
+                      id,
+                      new LinearLayout.LayoutParams(
+                          -1, dp(65)
+                      )
+                  );
+
+                  Button search =
+                      button("Kişiyi bul");
 
                   LinearLayout.LayoutParams p =
-                      new LinearLayout.LayoutParams(-1, dp(60));
+                      new LinearLayout.LayoutParams(
+                          -1, dp(60)
+                      );
+
                   p.topMargin = dp(15);
 
-                  root.addView(start, p);
+                  root.addView(search, p);
 
-                  start.setOnClickListener(v -> {
-                      String name =
-                          username.getText().toString().trim();
-
-                      if (name.isEmpty()) {
-                          name = "Yeni kişi";
-                      }
-
-                      showChat(name);
-                  });
+                  search.setOnClickListener(
+                      v -> showChat(
+                          "NEXUS kullanıcısı"
+                      )
+                  );
 
                   setContentView(root);
               }
 
               private void showChat(String person) {
-                  LinearLayout root = page(person);
 
-                  Button back = button("‹ Sohbetlere dön");
+                  LinearLayout root =
+                      page(person);
+
+                  Button back =
+                      button("‹ Sohbetlere dön");
+
                   root.addView(
                       back,
                       0,
-                      new LinearLayout.LayoutParams(-1, dp(48))
+                      new LinearLayout.LayoutParams(
+                          -1, dp(48)
+                      )
                   );
 
-                  back.setOnClickListener(v -> showHome());
+                  back.setOnClickListener(
+                      v -> showHome()
+                  );
 
-                  ScrollView scroll = new ScrollView(this);
+                  ScrollView scroll =
+                      new ScrollView(this);
 
                   LinearLayout messages =
                       new LinearLayout(this);
 
                   messages.setOrientation(
                       LinearLayout.VERTICAL
-                  );
-
-                  messages.setPadding(
-                      0, dp(10), 0, dp(10)
                   );
 
                   scroll.addView(messages);
@@ -353,40 +563,45 @@ jobs:
                       )
                   );
 
-                  LinearLayout inputBar =
+                  LinearLayout bar =
                       new LinearLayout(this);
 
-                  inputBar.setGravity(
+                  bar.setGravity(
                       Gravity.CENTER_VERTICAL
                   );
 
-                  EditText input = new EditText(this);
+                  EditText input =
+                      new EditText(this);
+
                   input.setHint("Mesaj…");
                   input.setHintTextColor(Color.GRAY);
                   input.setTextColor(Color.WHITE);
 
-                  Button send = button("Gönder");
+                  Button send =
+                      button("Gönder");
 
-                  inputBar.addView(
+                  bar.addView(
                       input,
                       new LinearLayout.LayoutParams(
                           0, dp(60), 1
                       )
                   );
 
-                  inputBar.addView(
+                  bar.addView(
                       send,
                       new LinearLayout.LayoutParams(
                           dp(95), dp(60)
                       )
                   );
 
-                  root.addView(inputBar);
+                  root.addView(bar);
 
                   send.setOnClickListener(v -> {
 
                       String message =
-                          input.getText().toString().trim();
+                          input.getText()
+                              .toString()
+                              .trim();
 
                       if (message.isEmpty()) {
                           return;
@@ -423,35 +638,31 @@ jobs:
 
                   bubble.setTextColor(Color.WHITE);
                   bubble.setPadding(
-                      dp(14),
-                      dp(10),
-                      dp(14),
-                      dp(10)
+                      dp(14), dp(10),
+                      dp(14), dp(10)
                   );
 
                   bubble.setBackgroundColor(
                       Color.rgb(0,80,105)
                   );
 
-                  LinearLayout.LayoutParams p =
+                  parent.addView(
+                      bubble,
                       new LinearLayout.LayoutParams(
-                          -1,
-                          dp(85)
-                      );
+                          -1, dp(85)
+                      )
+                  );
 
-                  p.topMargin = dp(8);
-
-                  parent.addView(bubble, p);
-
-                  handler.postDelayed(() -> {
-
-                      if (bubble.getParent() != null) {
-                          ((LinearLayout)
-                              bubble.getParent())
-                              .removeView(bubble);
-                      }
-
-                  }, 60000);
+                  handler.postDelayed(
+                      () -> {
+                          if (bubble.getParent() != null) {
+                              ((LinearLayout)
+                                  bubble.getParent())
+                                  .removeView(bubble);
+                          }
+                      },
+                      60000
+                  );
               }
           }
           EOF
@@ -461,5 +672,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-UI-debug-APK
+          name: NEXUS-USER-debug-APK
           path: app/build/outputs/apk/debug/app-debug.apk
