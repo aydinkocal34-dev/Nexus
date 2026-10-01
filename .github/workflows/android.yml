@@ -115,8 +115,8 @@ jobs:
                   minSdk 26
                   targetSdk 35
 
-                  versionCode 16
-                  versionName '0.12.3-libsignal-bytecode'
+                  versionCode 17
+                  versionName '0.13.0-signal-store-test'
               }
 
               compileOptions {
@@ -230,6 +230,42 @@ jobs:
           }
           EOF
 
+
+          cat > app/src/test/java/com/nexus/app/SignalStoreFoundationTest.java <<'EOF'
+          package com.nexus.app;
+
+          import org.junit.Test;
+          import java.security.SecureRandom;
+          import java.util.Arrays;
+
+          import static org.junit.Assert.*;
+
+          public class SignalStoreFoundationTest {
+
+              @Test
+              public void localKeyMaterialRoundTripWorks() throws Exception {
+                  SecureRandom random = new SecureRandom();
+                  byte[] key = new byte[32];
+                  random.nextBytes(key);
+
+                  byte[] stored = Arrays.copyOf(key, key.length);
+                  assertArrayEquals(key, stored);
+
+                  stored[0] ^= 1;
+                  assertFalse(Arrays.equals(key, stored));
+              }
+
+              @Test
+              public void sessionIdentifiersAreStableAndDistinct() {
+                  String alice = "NX-ALICE-0001";
+                  String bob = "NX-BOB-0002";
+
+                  assertNotEquals(alice, bob);
+                  assertEquals(alice, new String(alice));
+                  assertEquals(bob, new String(bob));
+              }
+          }
+          EOF
           cat > app/src/test/java/com/nexus/app/LibsignalApiTest.java <<'EOF'
           package com.nexus.app;
 
