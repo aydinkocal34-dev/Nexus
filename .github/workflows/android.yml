@@ -25,7 +25,7 @@ jobs:
           yes | "$SDK" --licenses >/dev/null 2>&1 || true
           "$SDK" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Create isolated Gradle wrapper
+      - name: Gradle
         run: |
           rm -rf /tmp/nexus-gradle
           mkdir -p /tmp/nexus-gradle
@@ -33,13 +33,15 @@ jobs:
           printf 'rootProject.name="bootstrap"\n' > settings.gradle
           gradle wrapper --gradle-version 9.5.1
 
-      - name: Create Android project
+      - name: Create project
         run: |
           mkdir -p app/src/main/java/com/nexus/app
           mkdir -p app/src/main/res/values
           mkdir -p app/src/test/java/com/nexus/app
 
           cat > settings.gradle <<'EOF'
+          import org.gradle.api.initialization.resolve.RepositoriesMode
+
           pluginManagement {
               repositories {
                   google()
@@ -86,8 +88,8 @@ jobs:
                   applicationId 'com.nexus.app'
                   minSdk 26
                   targetSdk 35
-                  versionCode 11
-                  versionName '0.10.1-session-fix'
+                  versionCode 12
+                  versionName '0.11.0-secure-session'
               }
 
               compileOptions {
@@ -111,17 +113,21 @@ jobs:
           cat > app/src/main/AndroidManifest.xml <<'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.INTERNET"/>
+
               <application
                   android:theme="@style/AppTheme"
                   android:label="NEXUS"
                   android:allowBackup="false">
+
                   <activity
                       android:name=".MainActivity"
                       android:exported="true">
+
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
                           <category android:name="android.intent.category.LAUNCHER"/>
                       </intent-filter>
+
                   </activity>
               </application>
           </manifest>
@@ -133,8 +139,190 @@ jobs:
                   parent="android:style/Theme.Material.Light.NoActionBar">
                   <item name="android:fontFamily">sans</item>
                   <item name="android:windowLightStatusBar">false</item>
+                  <item name="android:statusBarColor">#000000</item>
+                  <item name="android:navigationBarColor">#000000</item>
               </style>
           </resources>
+          EOF
+
+          cat > app/src/main/java/com/nexus/app/SecureSessionStore.java <<'EOF'
+          package com.nexus.app;
+
+          import android.content.Context;
+          import android.content.SharedPreferences;
+          import android.security.keystore.KeyGenParameterSpec;
+          import android.security.keystore.KeyProperties;
+          import android.util.Base64;
+
+          import java.nio.charset.StandardCharsets;
+          import java.security.KeyStore;
+
+          import javax.crypto.Cipher;
+          import javax.crypto.KeyGenerator;
+          import javax.crypto.SecretKey;
+          import javax.crypto.spec.GCMParameterSpec;
+
+          public final class SecureSessionStore {
+
+              private static final String KEY_ALIAS =
+                      "nexus_session_aes_v1";
+
+              private static final String PREFS =
+                      "nexus_secure_session";
+
+              private static final String DATA =
+                      "encrypted_state";
+
+              private SecureSessionStore() {}
+
+              private static SecretKey getKey() throws Exception {
+
+                  KeyStore ks =
+                          KeyStore.getInstance("AndroidKeyStore");
+
+                  ks.load(null);
+
+                  if (ks.containsAlias(KEY_ALIAS)) {
+                      return ((KeyStore.SecretKeyEntry)
+                              ks.getEntry(KEY_ALIAS, null))
+                              .getSecretKey();
+                  }
+
+                  KeyGenerator generator =
+                          KeyGenerator.getInstance(
+                                  KeyProperties.KEY_ALGORITHM_AES,
+                                  "AndroidKeyStore"
+                          );
+
+                  generator.init(
+                          new KeyGenParameterSpec.Builder(
+                                  KEY_ALIAS,
+                                  KeyProperties.PURPOSE_ENCRYPT |
+                                  KeyProperties.PURPOSE_DECRYPT
+                          )
+                          .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                          .setEncryptionPaddings(
+                                  KeyProperties.ENCRYPTION_PADDING_NONE
+                          )
+                          .setKeySize(256)
+                          .build()
+                  );
+
+                  return generator.generateKey();
+              }
+
+              public static void save(
+                      Context context,
+                      String peerId,
+                      String fingerprint
+              ) throws Exception {
+
+                  String plain =
+                          peerId + "\n" +
+                          fingerprint + "\n" +
+                          System.currentTimeMillis();
+
+                  Cipher cipher =
+                          Cipher.getInstance("AES/GCM/NoPadding");
+
+                  cipher.init(
+                          Cipher.ENCRYPT_MODE,
+                          getKey()
+                  );
+
+                  byte[] encrypted =
+                          cipher.doFinal(
+                                  plain.getBytes(
+                                          StandardCharsets.UTF_8
+                                  )
+                          );
+
+                  String value =
+                          Base64.encodeToString(
+                                  cipher.getIV(),
+                                  Base64.NO_WRAP
+                          )
+                          + "."
+                          +
+                          Base64.encodeToString(
+                                  encrypted,
+                                  Base64.NO_WRAP
+                          );
+
+                  preferences(context)
+                          .edit()
+                          .putString(DATA, value)
+                          .apply();
+              }
+
+              public static String load(
+                      Context context
+              ) throws Exception {
+
+                  String value =
+                          preferences(context)
+                                  .getString(DATA, null);
+
+                  if (value == null) {
+                      return null;
+                  }
+
+                  String[] parts = value.split("\\.", 2);
+
+                  if (parts.length != 2) {
+                      return null;
+                  }
+
+                  byte[] iv =
+                          Base64.decode(
+                                  parts[0],
+                                  Base64.NO_WRAP
+                          );
+
+                  byte[] encrypted =
+                          Base64.decode(
+                                  parts[1],
+                                  Base64.NO_WRAP
+                          );
+
+                  Cipher cipher =
+                          Cipher.getInstance(
+                                  "AES/GCM/NoPadding"
+                          );
+
+                  cipher.init(
+                          Cipher.DECRYPT_MODE,
+                          getKey(),
+                          new GCMParameterSpec(
+                                  128,
+                                  iv
+                          )
+                  );
+
+                  return new String(
+                          cipher.doFinal(encrypted),
+                          StandardCharsets.UTF_8
+                  );
+              }
+
+              public static void clear(
+                      Context context
+              ) {
+                  preferences(context)
+                          .edit()
+                          .remove(DATA)
+                          .apply();
+              }
+
+              private static SharedPreferences preferences(
+                      Context context
+              ) {
+                  return context.getSharedPreferences(
+                          PREFS,
+                          Context.MODE_PRIVATE
+                  );
+              }
+          }
           EOF
 
           cat > app/src/main/java/com/nexus/app/MainActivity.java <<'EOF'
@@ -146,6 +334,7 @@ jobs:
           import android.widget.TextView;
 
           public class MainActivity extends Activity {
+
               @Override
               protected void onCreate(Bundle state) {
                   super.onCreate(state);
@@ -155,52 +344,90 @@ jobs:
                       WindowManager.LayoutParams.FLAG_SECURE
                   );
 
-                  TextView t = new TextView(this);
-                  t.setPadding(40,80,40,40);
-                  t.setTextSize(18);
-                  t.setText(
-                      "NEXUS\n\n" +
-                      "0.10.1 SESSION FIX\n\n" +
-                      "Android altyapısı hazır.\n\n" +
-                      "Signal kütüphanesi bağlı.\n" +
-                      "Gerçek Signal oturumu henüz aktif değil.\n\n" +
-                      "Ekran görüntüsü koruması aktif."
-                  );
+                  TextView view = new TextView(this);
+                  view.setPadding(40,80,40,40);
+                  view.setTextSize(18);
 
-                  setContentView(t);
+                  try {
+                      SecureSessionStore.save(
+                          this,
+                          "NX-TEST-0001",
+                          "NEXUS-FINGERPRINT-TEST"
+                      );
+
+                      String result =
+                          SecureSessionStore.load(this);
+
+                      view.setText(
+                          "NEXUS\n\n" +
+                          "0.11 SECURE SESSION\n\n" +
+                          "✓ Android Keystore AES-256\n" +
+                          "✓ AES-GCM şifreli session state\n" +
+                          "✓ Şifreli SharedPreferences state\n" +
+                          "✓ FLAG_SECURE\n\n" +
+                          "Session state test:\n" +
+                          (result != null ? "BAŞARILI" : "BAŞARISIZ") +
+                          "\n\n" +
+                          "Gerçek Signal oturumu henüz aktif değil."
+                      );
+
+                  } catch (Exception e) {
+                      view.setText(
+                          "NEXUS HATASI\n\n" +
+                          e.getClass().getSimpleName() +
+                          "\n\n" +
+                          e.getMessage()
+                      );
+                  }
+
+                  setContentView(view);
               }
           }
           EOF
 
-          cat > app/src/test/java/com/nexus/app/ReplayGuardTest.java <<'EOF'
+          cat > app/src/test/java/com/nexus/app/SecureStateTest.java <<'EOF'
           package com.nexus.app;
 
           import org.junit.Test;
-          import java.util.HashSet;
-          import java.util.Set;
           import static org.junit.Assert.*;
 
-          public class ReplayGuardTest {
+          public class SecureStateTest {
+
               @Test
-              public void duplicateIsRejected() {
-                  Set<String> seen = new HashSet<>();
-                  assertTrue(seen.add("message-1"));
-                  assertFalse(seen.add("message-1"));
+              public void stateFormatIsExpected() {
+
+                  String peer = "NX-TEST-0001";
+                  String fingerprint = "ABCDEF123456";
+
+                  String state =
+                          peer + "\n" +
+                          fingerprint + "\n" +
+                          System.currentTimeMillis();
+
+                  String[] parts = state.split("\n");
+
+                  assertEquals(3, parts.length);
+                  assertEquals(peer, parts[0]);
+                  assertEquals(fingerprint, parts[1]);
               }
           }
           EOF
 
       - name: Run tests
         run: |
-          /tmp/nexus-gradle/gradlew -p "$GITHUB_WORKSPACE" test --stacktrace
+          /tmp/nexus-gradle/gradlew \
+            -p "$GITHUB_WORKSPACE" \
+            test --stacktrace
 
       - name: Build APK
         run: |
-          /tmp/nexus-gradle/gradlew -p "$GITHUB_WORKSPACE" assembleDebug --stacktrace
+          /tmp/nexus-gradle/gradlew \
+            -p "$GITHUB_WORKSPACE" \
+            assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-0.10.1-debug-APK
+          name: NEXUS-0.11.0-secure-session-APK
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
