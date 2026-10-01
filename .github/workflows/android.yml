@@ -1,6 +1,9 @@
 name: NEXUS Android Build
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -8,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -28,14 +32,12 @@ jobs:
       - name: Install Android SDK components
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
             "platform-tools" \
             "platforms;android-35" \
             "build-tools;35.0.0"
 
-      # IMPORTANT:
-      # Bootstrap Gradle OUTSIDE the repository so the root
-      # settings.gradle cannot interfere with wrapper generation.
       - name: Prepare isolated Gradle wrapper
         run: |
           rm -rf /tmp/nexus-gradle-bootstrap
@@ -51,36 +53,47 @@ jobs:
           cp -R gradle "$GITHUB_WORKSPACE/gradle"
 
           cd "$GITHUB_WORKSPACE"
+
           chmod +x gradlew
 
-          echo "Gradle wrapper prepared:"
+          echo "Gradle wrapper prepared successfully"
           ./gradlew --version
 
       - name: Create NEXUS project
         run: |
+
           mkdir -p app/src/main/java/com/nexus/app
+          mkdir -p app/src/main/res/values
           mkdir -p app/src/test/java/com/nexus/app
 
           cat > settings.gradle <<'EOF'
+          import org.gradle.api.initialization.resolve.RepositoriesMode
+
           pluginManagement {
               repositories {
                   google()
                   mavenCentral()
                   gradlePluginPortal()
-                  maven { url = uri("https://build-artifacts.signal.org/libraries/maven/") }
+                  maven {
+                      url = uri("https://build-artifacts.signal.org/libraries/maven/")
+                  }
               }
           }
 
           dependencyResolutionManagement {
               repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+
               repositories {
                   google()
                   mavenCentral()
-                  maven { url = uri("https://build-artifacts.signal.org/libraries/maven/") }
+                  maven {
+                      url = uri("https://build-artifacts.signal.org/libraries/maven/")
+                  }
               }
           }
 
           rootProject.name = "NEXUS"
+
           include(":app")
           EOF
 
@@ -90,430 +103,4 @@ jobs:
           }
           EOF
 
-          cat > gradle.properties <<'EOF'
-          org.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8
-          android.useAndroidX=true
-          android.nonTransitiveRClass=true
-          EOF
-
-          cat > app/build.gradle <<'EOF'
-          plugins {
-              id 'com.android.application'
-          }
-
-          android {
-              namespace 'com.nexus.app'
-              compileSdk 35
-
-              defaultConfig {
-                  applicationId 'com.nexus.app'
-                  minSdk 26
-                  targetSdk 35
-                  versionCode 11
-                  versionName '0.10.1-session-fix'
-                  testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
-              }
-
-              compileOptions {
-                  coreLibraryDesugaringEnabled true
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
-              }
-
-              buildTypes {
-                  release {
-                      minifyEnabled false
-                  }
-              }
-          }
-
-          dependencies {
-              implementation 'androidx.appcompat:appcompat:1.7.0'
-              implementation 'androidx.core:core:1.15.0'
-
-              implementation 'com.squareup.okhttp3:okhttp:4.12.0'
-
-              implementation 'org.signal:libsignal-client:0.102.2'
-              implementation 'org.signal:libsignal-android:0.102.2'
-
-              coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
-
-              testImplementation 'junit:junit:4.13.2'
-          }
-          EOF
-
-          cat > app/src/main/AndroidManifest.xml <<'EOF'
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-
-              <uses-permission android:name="android.permission.INTERNET" />
-
-              <application
-                  android:allowBackup="false"
-                  android:label="NEXUS"
-                  android:supportsRtl="true"
-                  android:theme="@style/AppTheme">
-
-                  <activity
-                      android:name=".MainActivity"
-                      android:exported="true">
-
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN" />
-                          <category android:name="android.intent.category.LAUNCHER" />
-                      </intent-filter>
-
-                  </activity>
-
-              </application>
-
-          </manifest>
-          EOF
-
-          mkdir -p app/src/main/res/values
-
-          cat > app/src/main/res/values/styles.xml <<'EOF'
-          <resources>
-              <style name="AppTheme"
-                  parent="android:style/Theme.Material.Light.NoActionBar">
-                  <item name="android:fontFamily">sans</item>
-                  <item name="android:windowLightStatusBar">false</item>
-                  <item name="android:statusBarColor">#000000</item>
-                  <item name="android:navigationBarColor">#000000</item>
-              </style>
-          </resources>
-          EOF
-
-          cat > app/src/main/java/com/nexus/app/IdentityStore.java <<'EOF'
-          package com.nexus.app;
-
-          import android.content.Context;
-          import java.nio.charset.StandardCharsets;
-          import java.security.KeyPair;
-          import java.security.KeyPairGenerator;
-          import java.security.KeyStore;
-          import java.security.MessageDigest;
-          import java.security.spec.ECGenParameterSpec;
-
-          public final class IdentityStore {
-
-              private static final String ALIAS = "nexus_device_identity_v1";
-
-              private IdentityStore() {}
-
-              public static KeyPair getOrCreate(Context context) throws Exception {
-                  KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
-                  keyStore.load(null);
-
-                  if (keyStore.containsAlias(ALIAS)) {
-                      KeyStore.PrivateKeyEntry entry =
-                              (KeyStore.PrivateKeyEntry) keyStore.getEntry(ALIAS, null);
-
-                      return new KeyPair(
-                              entry.getCertificate().getPublicKey(),
-                              entry.getPrivateKey()
-                      );
-                  }
-
-                  KeyPairGenerator generator =
-                          KeyPairGenerator.getInstance(
-                                  "EC",
-                                  "AndroidKeyStore"
-                          );
-
-                  generator.initialize(
-                          new ECGenParameterSpec("secp256r1")
-                  );
-
-                  return generator.generateKeyPair();
-              }
-
-              public static String fingerprint(KeyPair keyPair) throws Exception {
-                  byte[] digest = MessageDigest.getInstance("SHA-256")
-                          .digest(
-                                  keyPair.getPublic()
-                                          .getEncoded()
-                          );
-
-                  StringBuilder result = new StringBuilder();
-
-                  for (byte b : digest) {
-                      result.append(String.format("%02X", b));
-                  }
-
-                  return result.substring(0, 32);
-              }
-          }
-          EOF
-
-          cat > app/src/main/java/com/nexus/app/SessionStore.java <<'EOF'
-          package com.nexus.app;
-
-          import android.content.Context;
-          import android.content.SharedPreferences;
-
-          public final class SessionStore {
-
-              private static final String PREFS = "nexus_session_state";
-
-              private SessionStore() {}
-
-              public static void save(
-                      Context context,
-                      String peerId,
-                      String peerFingerprint
-              ) {
-                  SharedPreferences preferences =
-                          context.getSharedPreferences(
-                                  PREFS,
-                                  Context.MODE_PRIVATE
-                          );
-
-                  preferences.edit()
-                          .putString("peer_id", peerId)
-                          .putString("peer_fingerprint", peerFingerprint)
-                          .putBoolean("established", true)
-                          .apply();
-              }
-
-              public static boolean exists(Context context) {
-                  return context.getSharedPreferences(
-                          PREFS,
-                          Context.MODE_PRIVATE
-                  ).getBoolean("established", false);
-              }
-          }
-          EOF
-
-          cat > app/src/main/java/com/nexus/app/SignalSession.java <<'EOF'
-          package com.nexus.app;
-
-          public final class SignalSession {
-
-              private final String peerId;
-              private final String peerFingerprint;
-              private boolean established;
-
-              public SignalSession(
-                      String peerId,
-                      String peerFingerprint
-              ) {
-                  this.peerId = peerId;
-                  this.peerFingerprint = peerFingerprint;
-              }
-
-              public void establish() {
-                  established = true;
-              }
-
-              public boolean isEstablished() {
-                  return established;
-              }
-
-              public String getPeerId() {
-                  return peerId;
-              }
-
-              public String getPeerFingerprint() {
-                  return peerFingerprint;
-              }
-          }
-          EOF
-
-          cat > app/src/main/java/com/nexus/app/ReplayGuard.java <<'EOF'
-          package com.nexus.app;
-
-          import java.util.HashSet;
-          import java.util.Set;
-
-          public final class ReplayGuard {
-
-              private final Set<String> seenMessageIds =
-                      new HashSet<>();
-
-              public synchronized boolean accept(String messageId) {
-
-                  if (messageId == null || messageId.isEmpty()) {
-                      return false;
-                  }
-
-                  if (seenMessageIds.contains(messageId)) {
-                      return false;
-                  }
-
-                  seenMessageIds.add(messageId);
-                  return true;
-              }
-
-              public synchronized int size() {
-                  return seenMessageIds.size();
-              }
-
-              public synchronized void clear() {
-                  seenMessageIds.clear();
-              }
-          }
-          EOF
-
-          cat > app/src/main/java/com/nexus/app/SignalEngine.java <<'EOF'
-          package com.nexus.app;
-
-          public final class SignalEngine {
-
-              public boolean isReady() {
-                  return false;
-              }
-
-              public String status() {
-                  return "Signal altyapısı hazır; gerçek oturum henüz aktif değil.";
-              }
-          }
-          EOF
-
-          cat > app/src/main/java/com/nexus/app/MainActivity.java <<'EOF'
-          package com.nexus.app;
-
-          import android.app.Activity;
-          import android.os.Bundle;
-          import android.view.WindowManager;
-          import android.widget.TextView;
-
-          import java.security.KeyPair;
-
-          public class MainActivity extends Activity {
-
-              @Override
-              protected void onCreate(Bundle savedInstanceState) {
-                  super.onCreate(savedInstanceState);
-
-                  getWindow().setFlags(
-                          WindowManager.LayoutParams.FLAG_SECURE,
-                          WindowManager.LayoutParams.FLAG_SECURE
-                  );
-
-                  TextView textView = new TextView(this);
-                  textView.setPadding(48, 80, 48, 48);
-                  textView.setTextSize(18);
-
-                  try {
-                      KeyPair identity =
-                              IdentityStore.getOrCreate(this);
-
-                      String fingerprint =
-                              IdentityStore.fingerprint(identity);
-
-                      textView.setText(
-                              "NEXUS\n\n" +
-                              "0.10.1 SESSION FIX\n\n" +
-                              "Cihaz kimliği hazır.\n\n" +
-                              "Fingerprint:\n" +
-                              fingerprint +
-                              "\n\n" +
-                              "Signal altyapısı bağlı.\n" +
-                              "Gerçek Signal oturumu henüz aktif değil.\n\n" +
-                              "Replay koruması hazır.\n" +
-                              "Ekran görüntüsü/kayıt koruması aktif."
-                      );
-
-                  } catch (Exception e) {
-                      textView.setText(
-                              "NEXUS başlatma hatası:\n\n" +
-                              e.getMessage()
-                      );
-                  }
-
-                  setContentView(textView);
-              }
-          }
-          EOF
-
-          cat > app/src/test/java/com/nexus/app/SessionModelTest.java <<'EOF'
-          package com.nexus.app;
-
-          import org.junit.Test;
-          import static org.junit.Assert.*;
-
-          public class SessionModelTest {
-
-              @Test
-              public void sessionLifecycleWorks() {
-                  SignalSession session =
-                          new SignalSession(
-                                  "NX-TEST-0001",
-                                  "ABCDEF123456"
-                          );
-
-                  assertFalse(session.isEstablished());
-
-                  session.establish();
-
-                  assertTrue(session.isEstablished());
-                  assertEquals(
-                          "NX-TEST-0001",
-                          session.getPeerId()
-                  );
-              }
-          }
-          EOF
-
-          cat > app/src/test/java/com/nexus/app/ReplayGuardTest.java <<'EOF'
-          package com.nexus.app;
-
-          import org.junit.Test;
-          import static org.junit.Assert.*;
-
-          public class ReplayGuardTest {
-
-              @Test
-              public void duplicateMessageIsRejected() {
-
-                  ReplayGuard guard = new ReplayGuard();
-
-                  assertTrue(
-                          guard.accept("message-1")
-                  );
-
-                  assertFalse(
-                          guard.accept("message-1")
-                  );
-
-                  assertEquals(
-                          1,
-                          guard.size()
-                  );
-              }
-
-              @Test
-              public void invalidMessageIsRejected() {
-
-                  ReplayGuard guard = new ReplayGuard();
-
-                  assertFalse(
-                          guard.accept(null)
-                  );
-
-                  assertFalse(
-                          guard.accept("")
-                  );
-              }
-          }
-          EOF
-
-      - name: Run unit tests
-        run: |
-          ./gradlew test --stacktrace
-
-      - name: Build debug APK
-        run: |
-          ./gradlew assembleDebug --stacktrace
-
-      - name: Verify APK
-        run: |
-          ls -lh app/build/outputs/apk/debug/
-          sha256sum app/build/outputs/apk/debug/app-debug.apk
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: NEXUS-SESSION-FIX-0.10.1-debug-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 14
+          cat > gradle
