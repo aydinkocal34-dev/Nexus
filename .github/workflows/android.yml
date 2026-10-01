@@ -12,30 +12,45 @@ jobs:
 
     steps:
 
+      # ==================================================
+      # 1 — CHECKOUT
+      # ==================================================
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ==================================================
+      # 2 — JAVA 21
+      # ==================================================
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
 
+      # ==================================================
+      # 3 — ANDROID SDK
+      # ==================================================
       - name: Check Android environment
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+
           java -version
+
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --version
 
       - name: Install Android SDK components
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
             "platform-tools" \
             "platforms;android-35" \
             "build-tools;35.0.0"
 
+      # ==================================================
+      # 4 — GRADLE 9.5 WRAPPER
+      # ==================================================
       - name: Prepare Gradle wrapper
         run: |
           mkdir -p gradle/wrapper
@@ -58,9 +73,14 @@ jobs:
           EOF
 
           gradle wrapper --gradle-version 9.5
+
           chmod +x gradlew
+
           ./gradlew --version
 
+      # ==================================================
+      # 5 — PROJECT
+      # ==================================================
       - name: Create NEXUS project
         run: |
           mkdir -p app/src/main/java/com/nexus/app
@@ -77,19 +97,25 @@ jobs:
           }
 
           dependencyResolutionManagement {
-              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositoriesMode.set(
+                  RepositoriesMode.FAIL_ON_PROJECT_REPOS
+              )
 
               repositories {
                   google()
                   mavenCentral()
 
                   maven {
-                      url = uri("https://build-artifacts.signal.org/libraries/maven/")
+                      name = "SignalBuildArtifacts"
+                      url = uri(
+                          "https://build-artifacts.signal.org/libraries/maven/"
+                      )
                   }
               }
           }
 
           rootProject.name = "NEXUS"
+
           include(":app")
           EOF
 
@@ -111,27 +137,38 @@ jobs:
           }
 
           android {
+
               namespace 'com.nexus.app'
+
               compileSdk 35
 
               defaultConfig {
+
                   applicationId 'com.nexus.app'
+
                   minSdk 26
+
                   targetSdk 35
 
                   versionCode 9
+
                   versionName '0.9.0-signal'
 
-                  testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+                  testInstrumentationRunner \
+                      'androidx.test.runner.AndroidJUnitRunner'
               }
 
               compileOptions {
+
                   coreLibraryDesugaringEnabled true
+
                   sourceCompatibility JavaVersion.VERSION_17
+
                   targetCompatibility JavaVersion.VERSION_17
               }
 
               buildTypes {
+
                   release {
                       minifyEnabled false
                   }
@@ -140,27 +177,64 @@ jobs:
                       minifyEnabled false
                   }
               }
+
+              packaging {
+
+                  resources {
+
+                      excludes += [
+                          "libsignal_jni*.dylib",
+                          "signal_jni*.dll"
+                      ]
+                  }
+              }
           }
 
           dependencies {
-              implementation 'androidx.appcompat:appcompat:1.7.0'
-              implementation 'androidx.core:core:1.15.0'
 
-              implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+              implementation \
+                  'androidx.appcompat:appcompat:1.7.0'
 
-              implementation 'org.signal:libsignal-client:0.102.2'
-              implementation 'org.signal:libsignal-android:0.102.2'
+              implementation \
+                  'androidx.core:core:1.15.0'
 
-              coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
+              implementation \
+                  'com.squareup.okhttp3:okhttp:4.12.0'
 
-              testImplementation 'junit:junit:4.13.2'
+              /*
+               * Signal Protocol
+               *
+               * libsignal-client:
+               * platform-independent Signal implementation
+               *
+               * libsignal-android:
+               * Android native libraries
+               */
+              implementation \
+                  'org.signal:libsignal-client:0.102.2'
+
+              implementation \
+                  'org.signal:libsignal-android:0.102.2'
+
+              coreLibraryDesugaring \
+                  'com.android.tools:desugar_jdk_libs:2.1.5'
+
+              testImplementation \
+                  'junit:junit:4.13.2'
           }
           EOF
 
+      # ==================================================
+      # 6 — MANIFEST
+      # ==================================================
+      - name: Create AndroidManifest
+        run: |
           cat > app/src/main/AndroidManifest.xml <<'EOF'
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+          <manifest
+              xmlns:android="http://schemas.android.com/apk/res/android">
 
-              <uses-permission android:name="android.permission.INTERNET"/>
+              <uses-permission
+                  android:name="android.permission.INTERNET" />
 
               <application
                   android:allowBackup="false"
@@ -173,8 +247,13 @@ jobs:
                       android:exported="true">
 
                       <intent-filter>
-                          <action android:name="android.intent.action.MAIN"/>
-                          <category android:name="android.intent.category.LAUNCHER"/>
+
+                          <action
+                              android:name="android.intent.action.MAIN" />
+
+                          <category
+                              android:name="android.intent.category.LAUNCHER" />
+
                       </intent-filter>
 
                   </activity>
@@ -184,19 +263,34 @@ jobs:
           </manifest>
           EOF
 
+      # ==================================================
+      # 7 — THEME
+      # ==================================================
+      - name: Create theme
+        run: |
           cat > app/src/main/res/values/styles.xml <<'EOF'
           <resources>
+
               <style
                   name="AppTheme"
                   parent="Theme.AppCompat.DayNight.NoActionBar">
 
-                  <item name="android:statusBarColor">#000000</item>
-                  <item name="android:navigationBarColor">#000000</item>
+                  <item name="android:statusBarColor">
+                      #000000
+                  </item>
+
+                  <item name="android:navigationBarColor">
+                      #000000
+                  </item>
 
               </style>
+
           </resources>
           EOF
 
+      # ==================================================
+      # 8 — ANDROID KEYSTORE IDENTITY
+      # ==================================================
       - name: Create IdentityStore
         run: |
           cat > app/src/main/java/com/nexus/app/IdentityStore.java <<'EOF'
@@ -206,7 +300,6 @@ jobs:
           import java.security.KeyPairGenerator;
           import java.security.KeyStore;
           import java.security.MessageDigest;
-          import java.security.PublicKey;
           import java.security.spec.ECGenParameterSpec;
 
           public final class IdentityStore {
@@ -219,16 +312,21 @@ jobs:
               public static KeyPair getOrCreateIdentity()
                       throws Exception {
 
-                  KeyStore ks =
-                          KeyStore.getInstance("AndroidKeyStore");
+                  KeyStore keyStore =
+                          KeyStore.getInstance(
+                                  "AndroidKeyStore"
+                          );
 
-                  ks.load(null);
+                  keyStore.load(null);
 
-                  if (ks.containsAlias(ALIAS)) {
+                  if (keyStore.containsAlias(ALIAS)) {
 
                       KeyStore.PrivateKeyEntry entry =
                               (KeyStore.PrivateKeyEntry)
-                                      ks.getEntry(ALIAS, null);
+                                      keyStore.getEntry(
+                                              ALIAS,
+                                              null
+                                      );
 
                       return new KeyPair(
                               entry.getCertificate()
@@ -244,7 +342,9 @@ jobs:
                           );
 
                   generator.initialize(
-                          new ECGenParameterSpec("secp256r1")
+                          new ECGenParameterSpec(
+                                  "secp256r1"
+                          )
                   );
 
                   return generator.generateKeyPair();
@@ -257,7 +357,9 @@ jobs:
                           getOrCreateIdentity();
 
                   MessageDigest digest =
-                          MessageDigest.getInstance("SHA-256");
+                          MessageDigest.getInstance(
+                                  "SHA-256"
+                          );
 
                   byte[] hash =
                           digest.digest(
@@ -269,16 +371,26 @@ jobs:
                           new StringBuilder();
 
                   for (byte b : hash) {
+
                       result.append(
-                              String.format("%02X", b)
+                              String.format(
+                                      "%02X",
+                                      b
+                              )
                       );
                   }
 
-                  return result.substring(0, 32);
+                  return result.substring(
+                          0,
+                          32
+                  );
               }
           }
           EOF
 
+      # ==================================================
+      # 9 — SIGNAL VERSION / INTEGRATION BOUNDARY
+      # ==================================================
       - name: Create SignalEngine
         run: |
           cat > app/src/main/java/com/nexus/app/SignalEngine.java <<'EOF'
@@ -287,16 +399,15 @@ jobs:
           /**
            * NEXUS Signal integration boundary.
            *
-           * This class deliberately does not implement its own
-           * cryptography.
+           * IMPORTANT:
            *
-           * The actual Signal session implementation will be
-           * connected against the exact libsignal 0.102.2 API
-           * after the dependency/API compatibility test passes.
+           * This class intentionally does NOT implement
+           * cryptography itself.
+           *
+           * The actual session implementation will use
+           * libsignal rather than custom cryptography.
            */
           public final class SignalEngine {
-
-              private SignalEngine() {}
 
               public static final String LIBSIGNAL_VERSION =
                       "0.102.2";
@@ -304,21 +415,23 @@ jobs:
               public static final String PROTOCOL =
                       "Signal Protocol / Double Ratchet";
 
-              public static boolean libraryPresent() {
-                  return true;
-              }
+              private SignalEngine() {}
 
               public static String status() {
 
                   return
                       "libsignal " +
                       LIBSIGNAL_VERSION +
-                      " yüklü; gerçek session " +
-                      "entegrasyonu sonraki aşamada.";
+                      " hazır.\n" +
+                      "Gerçek session katmanı " +
+                      "sonraki aşamada.";
               }
           }
           EOF
 
+      # ==================================================
+      # 10 — RELAY ENVELOPE
+      # ==================================================
       - name: Create RelayEnvelope
         run: |
           cat > app/src/main/java/com/nexus/app/RelayEnvelope.java <<'EOF'
@@ -332,10 +445,15 @@ jobs:
           public final class RelayEnvelope {
 
               public final String messageId;
+
               public final String sender;
+
               public final String recipient;
+
               public final long timestamp;
+
               public final long expiresAt;
+
               public final String ciphertext;
 
               public RelayEnvelope(
@@ -347,6 +465,7 @@ jobs:
                           UUID.randomUUID().toString();
 
                   this.sender = sender;
+
                   this.recipient = recipient;
 
                   this.timestamp =
@@ -355,7 +474,8 @@ jobs:
                   this.expiresAt =
                           timestamp + 60_000L;
 
-                  this.ciphertext = ciphertext;
+                  this.ciphertext =
+                          ciphertext;
               }
 
               public String serialize() {
@@ -370,13 +490,17 @@ jobs:
 
                   return Base64.encodeToString(
                           raw.getBytes(
-                                  StandardCharsets.UTF_8),
+                                  StandardCharsets.UTF_8
+                          ),
                           Base64.NO_WRAP
                   );
               }
           }
           EOF
 
+      # ==================================================
+      # 11 — REPLAY GUARD
+      # ==================================================
       - name: Create ReplayGuard
         run: |
           cat > app/src/main/java/com/nexus/app/ReplayGuard.java <<'EOF'
@@ -387,7 +511,8 @@ jobs:
 
           public final class ReplayGuard {
 
-              private static final int MAX_ENTRIES = 2048;
+              private static final int MAX_ENTRIES =
+                      2048;
 
               private final Map<String, Boolean> seen =
                       new LinkedHashMap<String, Boolean>(
@@ -396,10 +521,13 @@ jobs:
                               true) {
 
                           @Override
-                          protected boolean removeEldestEntry(
-                                  Map.Entry<String, Boolean> eldest) {
+                          protected boolean
+                          removeEldestEntry(
+                                  Map.Entry<String, Boolean>
+                                          eldest) {
 
-                              return size() > MAX_ENTRIES;
+                              return size() >
+                                      MAX_ENTRIES;
                           }
                       };
 
@@ -408,10 +536,12 @@ jobs:
 
                   if (messageId == null ||
                           messageId.isEmpty()) {
+
                       return false;
                   }
 
                   if (seen.containsKey(messageId)) {
+
                       return false;
                   }
 
@@ -425,6 +555,9 @@ jobs:
           }
           EOF
 
+      # ==================================================
+      # 12 — MAIN ACTIVITY
+      # ==================================================
       - name: Create MainActivity
         run: |
           cat > app/src/main/java/com/nexus/app/MainActivity.java <<'EOF'
@@ -436,17 +569,26 @@ jobs:
           import android.widget.LinearLayout;
           import android.widget.TextView;
 
-          public class MainActivity extends Activity {
+          public class MainActivity
+                  extends Activity {
 
               @Override
               protected void onCreate(
                       Bundle savedInstanceState) {
 
-                  super.onCreate(savedInstanceState);
+                  super.onCreate(
+                          savedInstanceState
+                  );
 
+                  /*
+                   * Prevent screenshots and
+                   * screen recording.
+                   */
                   getWindow().setFlags(
-                          WindowManager.LayoutParams.FLAG_SECURE,
-                          WindowManager.LayoutParams.FLAG_SECURE
+                          WindowManager.LayoutParams
+                                  .FLAG_SECURE,
+                          WindowManager.LayoutParams
+                                  .FLAG_SECURE
                   );
 
                   LinearLayout root =
@@ -467,33 +609,38 @@ jobs:
                           new TextView(this);
 
                   title.setText(
-                          "NEXUS\n0.9.0 • SIGNAL"
+                          "NEXUS\n" +
+                          "0.9.0 • SIGNAL"
                   );
 
                   title.setTextSize(30);
 
                   root.addView(title);
 
-                  TextView identity =
+                  TextView fingerprint =
                           new TextView(this);
 
                   try {
 
-                      identity.setText(
+                      fingerprint.setText(
                               "\nDevice fingerprint:\n" +
                               IdentityStore.fingerprint()
                       );
 
                   } catch (Exception e) {
 
-                      identity.setText(
+                      fingerprint.setText(
                               "\nFingerprint unavailable"
                       );
                   }
 
-                  identity.setTextSize(17);
+                  fingerprint.setTextSize(
+                          17
+                  );
 
-                  root.addView(identity);
+                  root.addView(
+                          fingerprint
+                  );
 
                   TextView signal =
                           new TextView(this);
@@ -502,25 +649,34 @@ jobs:
                           "\n\nSignal layer:\n" +
                           SignalEngine.status() +
                           "\n\n" +
-                          "✓ libsignal dependency\n" +
-                          "✓ Android Keystore identity\n" +
-                          "✓ Double Ratchet implementation " +
-                          "provided by libsignal\n" +
-                          "✓ Replay protection foundation\n" +
+                          "✓ libsignal dependency" +
+                          "\n" +
+                          "✓ Android Keystore" +
+                          "\n" +
+                          "✓ Double Ratchet library" +
+                          "\n" +
+                          "✓ Replay protection" +
                           "\n\n" +
-                          "Gerçek mesaj şifreleme " +
-                          "henüz aktif değil."
+                          "Gerçek mesaj " +
+                          "şifreleme henüz aktif değil."
                   );
 
-                  signal.setTextSize(16);
+                  signal.setTextSize(
+                          16
+                  );
 
-                  root.addView(signal);
+                  root.addView(
+                          signal
+                  );
 
                   setContentView(root);
               }
           }
           EOF
 
+      # ==================================================
+      # 13 — TESTS
+      # ==================================================
       - name: Create tests
         run: |
           cat > app/src/test/java/com/nexus/app/SignalEngineTest.java <<'EOF'
@@ -534,7 +690,7 @@ jobs:
           public class SignalEngineTest {
 
               @Test
-              public void libsignalVersionIsCorrect() {
+              public void signalVersion() {
 
                   assertEquals(
                           "0.102.2",
@@ -543,19 +699,13 @@ jobs:
               }
 
               @Test
-              public void signalLibraryIsDeclaredPresent() {
-
-                  assertTrue(
-                          SignalEngine.libraryPresent()
-                  );
-              }
-
-              @Test
-              public void protocolIsSignalProtocol() {
+              public void protocolContainsDoubleRatchet() {
 
                   assertTrue(
                           SignalEngine.PROTOCOL
-                                  .contains("Double Ratchet")
+                                  .contains(
+                                          "Double Ratchet"
+                                  )
                   );
               }
           }
@@ -578,45 +728,60 @@ jobs:
                           new ReplayGuard();
 
                   assertTrue(
-                          guard.accept("abc")
+                          guard.accept("message-1")
                   );
 
                   assertFalse(
-                          guard.accept("abc")
+                          guard.accept("message-1")
                   );
               }
 
               @Test
-              public void differentMessagesAreAccepted() {
+              public void differentMessagesAccepted() {
 
                   ReplayGuard guard =
                           new ReplayGuard();
 
                   assertTrue(
-                          guard.accept("abc")
+                          guard.accept("message-1")
                   );
 
                   assertTrue(
-                          guard.accept("def")
+                          guard.accept("message-2")
                   );
               }
           }
           EOF
 
+      # ==================================================
+      # 14 — TEST
+      # ==================================================
       - name: Run unit tests
         run: |
           ./gradlew test
 
+      # ==================================================
+      # 15 — BUILD
+      # ==================================================
       - name: Build debug APK
         run: |
           ./gradlew assembleDebug
 
+      # ==================================================
+      # 16 — VERIFY
+      # ==================================================
       - name: Verify APK
         run: |
-          ls -lh app/build/outputs/apk/debug/
-          sha256sum app/build/outputs/apk/debug/app-debug.apk
+          ls -lh \
+            app/build/outputs/apk/debug/
 
-      - name: Upload NEXUS APK
+          sha256sum \
+            app/build/outputs/apk/debug/app-debug.apk
+
+      # ==================================================
+      # 17 — ARTIFACT
+      # ==================================================
+      - name: Upload NEXUS 0.9 APK
         uses: actions/upload-artifact@v4
         with:
           name: NEXUS-SIGNAL-0.9-debug-APK
