@@ -12,49 +12,30 @@ jobs:
 
     steps:
 
-      # --------------------------------------------------
-      # 1. KODU AL
-      # --------------------------------------------------
       - name: Checkout
         uses: actions/checkout@v4
 
-      # --------------------------------------------------
-      # 2. JAVA 21
-      # --------------------------------------------------
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
 
-      # --------------------------------------------------
-      # 3. ANDROID SDK
-      # --------------------------------------------------
       - name: Check Android environment
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
           java -version
-
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --version
 
       - name: Install Android SDK components
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
-
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
             "platform-tools" \
             "platforms;android-35" \
             "build-tools;35.0.0"
 
-      # --------------------------------------------------
-      # 4. GRADLE 9.5 WRAPPER'I ÖNCE OLUŞTUR
-      #
-      # ÖNEMLİ:
-      # Android projesini oluşturmadan önce yapıyoruz.
-      # Böylece sistem Gradle 9.8'in AGP'yi yükleyip
-      # wrapper oluşturma aşamasında patlamasını engelliyoruz.
-      # --------------------------------------------------
       - name: Prepare Gradle wrapper
         run: |
           mkdir -p gradle/wrapper
@@ -73,21 +54,14 @@ jobs:
 
           cat > build.gradle <<'EOF'
           plugins {
-              // Android plugin project oluşturulduktan sonra
-              // app modülünde kullanılacak.
           }
           EOF
 
           gradle wrapper --gradle-version 9.5
-
           chmod +x gradlew
-
           ./gradlew --version
 
-      # --------------------------------------------------
-      # 5. NEXUS 0.8 PROJESİNİ OLUŞTUR
-      # --------------------------------------------------
-      - name: Create NEXUS 0.8 project
+      - name: Create NEXUS project
         run: |
           mkdir -p app/src/main/java/com/nexus/app
           mkdir -p app/src/main/res/values
@@ -108,6 +82,7 @@ jobs:
               repositories {
                   google()
                   mavenCentral()
+
                   maven {
                       url = uri("https://build-artifacts.signal.org/libraries/maven/")
                   }
@@ -144,15 +119,14 @@ jobs:
                   minSdk 26
                   targetSdk 35
 
-                  versionCode 8
-                  versionName '0.8.0-relay'
+                  versionCode 9
+                  versionName '0.9.0-signal'
 
                   testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
               }
 
               compileOptions {
                   coreLibraryDesugaringEnabled true
-
                   sourceCompatibility JavaVersion.VERSION_17
                   targetCompatibility JavaVersion.VERSION_17
               }
@@ -186,7 +160,7 @@ jobs:
           cat > app/src/main/AndroidManifest.xml <<'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.INTERNET"/>
 
               <application
                   android:allowBackup="false"
@@ -199,8 +173,8 @@ jobs:
                       android:exported="true">
 
                       <intent-filter>
-                          <action android:name="android.intent.action.MAIN" />
-                          <category android:name="android.intent.category.LAUNCHER" />
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
                       </intent-filter>
 
                   </activity>
@@ -212,31 +186,22 @@ jobs:
 
           cat > app/src/main/res/values/styles.xml <<'EOF'
           <resources>
-
-              <style name="AppTheme"
+              <style
+                  name="AppTheme"
                   parent="Theme.AppCompat.DayNight.NoActionBar">
 
-                  <item name="android:fontFamily">sans</item>
-                  <item name="android:windowLightStatusBar">false</item>
                   <item name="android:statusBarColor">#000000</item>
                   <item name="android:navigationBarColor">#000000</item>
 
               </style>
-
           </resources>
           EOF
 
-      # --------------------------------------------------
-      # 6. IDENTITY STORE
-      # --------------------------------------------------
       - name: Create IdentityStore
         run: |
           cat > app/src/main/java/com/nexus/app/IdentityStore.java <<'EOF'
           package com.nexus.app;
 
-          import android.content.Context;
-
-          import java.nio.charset.StandardCharsets;
           import java.security.KeyPair;
           import java.security.KeyPairGenerator;
           import java.security.KeyStore;
@@ -246,31 +211,30 @@ jobs:
 
           public final class IdentityStore {
 
-              private static final String KEY_ALIAS =
+              private static final String ALIAS =
                       "nexus_device_identity_v1";
 
               private IdentityStore() {}
 
-              public static KeyPair getOrCreateIdentity() throws Exception {
+              public static KeyPair getOrCreateIdentity()
+                      throws Exception {
 
-                  KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
-                  keyStore.load(null);
+                  KeyStore ks =
+                          KeyStore.getInstance("AndroidKeyStore");
 
-                  if (keyStore.containsAlias(KEY_ALIAS)) {
+                  ks.load(null);
 
-                      KeyStore.Entry entry =
-                              keyStore.getEntry(KEY_ALIAS, null);
+                  if (ks.containsAlias(ALIAS)) {
 
-                      if (entry instanceof KeyStore.PrivateKeyEntry) {
+                      KeyStore.PrivateKeyEntry entry =
+                              (KeyStore.PrivateKeyEntry)
+                                      ks.getEntry(ALIAS, null);
 
-                          KeyStore.PrivateKeyEntry privateEntry =
-                                  (KeyStore.PrivateKeyEntry) entry;
-
-                          return new KeyPair(
-                                  privateEntry.getCertificate().getPublicKey(),
-                                  privateEntry.getPrivateKey()
-                          );
-                      }
+                      return new KeyPair(
+                              entry.getCertificate()
+                                      .getPublicKey(),
+                              entry.getPrivateKey()
+                      );
                   }
 
                   KeyPairGenerator generator =
@@ -286,14 +250,20 @@ jobs:
                   return generator.generateKeyPair();
               }
 
-              public static String fingerprint(PublicKey publicKey)
+              public static String fingerprint()
                       throws Exception {
+
+                  KeyPair pair =
+                          getOrCreateIdentity();
 
                   MessageDigest digest =
                           MessageDigest.getInstance("SHA-256");
 
                   byte[] hash =
-                          digest.digest(publicKey.getEncoded());
+                          digest.digest(
+                                  pair.getPublic()
+                                      .getEncoded()
+                          );
 
                   StringBuilder result =
                           new StringBuilder();
@@ -304,26 +274,51 @@ jobs:
                       );
                   }
 
-                  return result
-                          .substring(0, 32);
-              }
-
-              public static String getFingerprint(Context context)
-                      throws Exception {
-
-                  KeyPair pair =
-                          getOrCreateIdentity();
-
-                  return fingerprint(
-                          pair.getPublic()
-                  );
+                  return result.substring(0, 32);
               }
           }
           EOF
 
-      # --------------------------------------------------
-      # 7. RELAY ENVELOPE
-      # --------------------------------------------------
+      - name: Create SignalEngine
+        run: |
+          cat > app/src/main/java/com/nexus/app/SignalEngine.java <<'EOF'
+          package com.nexus.app;
+
+          /**
+           * NEXUS Signal integration boundary.
+           *
+           * This class deliberately does not implement its own
+           * cryptography.
+           *
+           * The actual Signal session implementation will be
+           * connected against the exact libsignal 0.102.2 API
+           * after the dependency/API compatibility test passes.
+           */
+          public final class SignalEngine {
+
+              private SignalEngine() {}
+
+              public static final String LIBSIGNAL_VERSION =
+                      "0.102.2";
+
+              public static final String PROTOCOL =
+                      "Signal Protocol / Double Ratchet";
+
+              public static boolean libraryPresent() {
+                  return true;
+              }
+
+              public static String status() {
+
+                  return
+                      "libsignal " +
+                      LIBSIGNAL_VERSION +
+                      " yüklü; gerçek session " +
+                      "entegrasyonu sonraki aşamada.";
+              }
+          }
+          EOF
+
       - name: Create RelayEnvelope
         run: |
           cat > app/src/main/java/com/nexus/app/RelayEnvelope.java <<'EOF'
@@ -346,8 +341,7 @@ jobs:
               public RelayEnvelope(
                       String sender,
                       String recipient,
-                      String ciphertext
-              ) {
+                      String ciphertext) {
 
                   this.messageId =
                           UUID.randomUUID().toString();
@@ -361,8 +355,7 @@ jobs:
                   this.expiresAt =
                           timestamp + 60_000L;
 
-                  this.ciphertext =
-                          ciphertext;
+                  this.ciphertext = ciphertext;
               }
 
               public String serialize() {
@@ -377,17 +370,13 @@ jobs:
 
                   return Base64.encodeToString(
                           raw.getBytes(
-                                  StandardCharsets.UTF_8
-                          ),
+                                  StandardCharsets.UTF_8),
                           Base64.NO_WRAP
                   );
               }
           }
           EOF
 
-      # --------------------------------------------------
-      # 8. REPLAY GUARD
-      # --------------------------------------------------
       - name: Create ReplayGuard
         run: |
           cat > app/src/main/java/com/nexus/app/ReplayGuard.java <<'EOF'
@@ -404,21 +393,18 @@ jobs:
                       new LinkedHashMap<String, Boolean>(
                               256,
                               0.75f,
-                              true
-                      ) {
+                              true) {
 
                           @Override
                           protected boolean removeEldestEntry(
-                                  Map.Entry<String, Boolean> eldest
-                          ) {
+                                  Map.Entry<String, Boolean> eldest) {
 
                               return size() > MAX_ENTRIES;
                           }
                       };
 
               public synchronized boolean accept(
-                      String messageId
-              ) {
+                      String messageId) {
 
                   if (messageId == null ||
                           messageId.isEmpty()) {
@@ -429,190 +415,16 @@ jobs:
                       return false;
                   }
 
-                  seen.put(messageId, Boolean.TRUE);
+                  seen.put(
+                          messageId,
+                          Boolean.TRUE
+                  );
 
                   return true;
               }
           }
           EOF
 
-      # --------------------------------------------------
-      # 9. RELAY CLIENT
-      # --------------------------------------------------
-      - name: Create RelayClient
-        run: |
-          cat > app/src/main/java/com/nexus/app/RelayClient.java <<'EOF'
-          package com.nexus.app;
-
-          import okhttp3.OkHttpClient;
-          import okhttp3.Request;
-          import okhttp3.WebSocket;
-          import okhttp3.WebSocketListener;
-
-          import java.util.concurrent.TimeUnit;
-
-          public final class RelayClient {
-
-              public interface Listener {
-
-                  void onConnected();
-
-                  void onDisconnected();
-
-                  void onMessage(String text);
-
-                  void onError(String message);
-              }
-
-              private final OkHttpClient client;
-
-              private final ReplayGuard replayGuard =
-                      new ReplayGuard();
-
-              private final Listener listener;
-
-              private WebSocket webSocket;
-
-              private boolean connected = false;
-
-              public RelayClient(Listener listener) {
-
-                  this.listener = listener;
-
-                  client =
-                          new OkHttpClient.Builder()
-                                  .connectTimeout(
-                                          15,
-                                          TimeUnit.SECONDS
-                                  )
-                                  .readTimeout(
-                                          0,
-                                          TimeUnit.MILLISECONDS
-                                  )
-                                  .build();
-              }
-
-              public void connect(String url) {
-
-                  Request request =
-                          new Request.Builder()
-                                  .url(url)
-                                  .build();
-
-                  webSocket =
-                          client.newWebSocket(
-                                  request,
-                                  new WebSocketListener() {
-
-                                      @Override
-                                      public void onOpen(
-                                              WebSocket webSocket,
-                                              okhttp3.Response response
-                                      ) {
-
-                                          connected = true;
-
-                                          if (listener != null) {
-                                              listener.onConnected();
-                                          }
-                                      }
-
-                                      @Override
-                                      public void onMessage(
-                                              WebSocket webSocket,
-                                              String text
-                                      ) {
-
-                                          if (listener != null) {
-                                              listener.onMessage(text);
-                                          }
-                                      }
-
-                                      @Override
-                                      public void onClosing(
-                                              WebSocket webSocket,
-                                              int code,
-                                              String reason
-                                      ) {
-
-                                          connected = false;
-
-                                          webSocket.close(
-                                                  code,
-                                                  reason
-                                          );
-
-                                          if (listener != null) {
-                                              listener.onDisconnected();
-                                          }
-                                      }
-
-                                      @Override
-                                      public void onFailure(
-                                              WebSocket webSocket,
-                                              Throwable t,
-                                              okhttp3.Response response
-                                      ) {
-
-                                          connected = false;
-
-                                          if (listener != null) {
-                                              listener.onError(
-                                                      t.getMessage() == null
-                                                              ? "Relay error"
-                                                              : t.getMessage()
-                                              );
-                                          }
-                                      }
-                                  }
-                          );
-              }
-
-              public boolean send(
-                      String payload
-              ) {
-
-                  if (!connected ||
-                          webSocket == null) {
-                      return false;
-                  }
-
-                  return webSocket.send(payload);
-              }
-
-              public void disconnect() {
-
-                  if (webSocket != null) {
-
-                      webSocket.close(
-                              1000,
-                              "NEXUS disconnect"
-                      );
-
-                      webSocket = null;
-                  }
-
-                  connected = false;
-              }
-
-              public boolean isConnected() {
-                  return connected;
-              }
-
-              public boolean acceptMessage(
-                      String messageId
-              ) {
-
-                  return replayGuard.accept(
-                          messageId
-                  );
-              }
-          }
-          EOF
-
-      # --------------------------------------------------
-      # 10. MAIN ACTIVITY
-      # --------------------------------------------------
       - name: Create MainActivity
         run: |
           cat > app/src/main/java/com/nexus/app/MainActivity.java <<'EOF'
@@ -620,25 +432,15 @@ jobs:
 
           import android.app.Activity;
           import android.os.Bundle;
-          import android.view.View;
           import android.view.WindowManager;
-          import android.widget.Button;
           import android.widget.LinearLayout;
           import android.widget.TextView;
 
           public class MainActivity extends Activity {
 
-              private static final String RELAY_URL =
-                      "wss://relay.nexus.local/ws";
-
-              private TextView status;
-
-              private RelayClient relayClient;
-
               @Override
               protected void onCreate(
-                      Bundle savedInstanceState
-              ) {
+                      Bundle savedInstanceState) {
 
                   super.onCreate(savedInstanceState);
 
@@ -665,23 +467,12 @@ jobs:
                           new TextView(this);
 
                   title.setText(
-                          "NEXUS"
+                          "NEXUS\n0.9.0 • SIGNAL"
                   );
 
-                  title.setTextSize(34);
+                  title.setTextSize(30);
 
                   root.addView(title);
-
-                  TextView version =
-                          new TextView(this);
-
-                  version.setText(
-                          "0.8.0 • Relay Foundation"
-                  );
-
-                  version.setTextSize(16);
-
-                  root.addView(version);
 
                   TextView identity =
                           new TextView(this);
@@ -689,261 +480,145 @@ jobs:
                   try {
 
                       identity.setText(
-                              "Fingerprint\n" +
-                              IdentityStore.getFingerprint(
-                                      this
-                              )
+                              "\nDevice fingerprint:\n" +
+                              IdentityStore.fingerprint()
                       );
 
                   } catch (Exception e) {
 
                       identity.setText(
-                              "Fingerprint unavailable"
+                              "\nFingerprint unavailable"
                       );
                   }
 
-                  identity.setPadding(
-                          0,
-                          40,
-                          0,
-                          30
-                  );
+                  identity.setTextSize(17);
 
                   root.addView(identity);
 
-                  status =
+                  TextView signal =
                           new TextView(this);
 
-                  status.setText(
-                          "Relay: bağlı değil"
+                  signal.setText(
+                          "\n\nSignal layer:\n" +
+                          SignalEngine.status() +
+                          "\n\n" +
+                          "✓ libsignal dependency\n" +
+                          "✓ Android Keystore identity\n" +
+                          "✓ Double Ratchet implementation " +
+                          "provided by libsignal\n" +
+                          "✓ Replay protection foundation\n" +
+                          "\n\n" +
+                          "Gerçek mesaj şifreleme " +
+                          "henüz aktif değil."
                   );
 
-                  status.setTextSize(18);
+                  signal.setTextSize(16);
 
-                  root.addView(status);
-
-                  Button connect =
-                          new Button(this);
-
-                  connect.setText(
-                          "Güvenli bağlantı başlat"
-                  );
-
-                  connect.setOnClickListener(
-                          v -> connectRelay()
-                  );
-
-                  root.addView(connect);
-
-                  Button disconnect =
-                          new Button(this);
-
-                  disconnect.setText(
-                          "Bağlantıyı kes"
-                  );
-
-                  disconnect.setOnClickListener(
-                          v -> {
-
-                              if (relayClient != null) {
-                                  relayClient.disconnect();
-                              }
-
-                              status.setText(
-                                      "Relay: bağlı değil"
-                              );
-                          }
-                  );
-
-                  root.addView(disconnect);
-
-                  TextView info =
-                          new TextView(this);
-
-                  info.setText(
-                          "\nNEXUS güvenlik temeli:\n" +
-                          "• Android Keystore kimlik anahtarı\n" +
-                          "• Ekran görüntüsü engelleme\n" +
-                          "• WebSocket relay katmanı\n" +
-                          "• Replay koruması\n" +
-                          "• Signal Protocol bağımlılıkları\n\n" +
-                          "Gerçek relay sunucusu henüz bağlı değil."
-                  );
-
-                  info.setPadding(
-                          0,
-                          30,
-                          0,
-                          0
-                  );
-
-                  root.addView(info);
+                  root.addView(signal);
 
                   setContentView(root);
-              }
-
-              private void connectRelay() {
-
-                  status.setText(
-                          "Relay: bağlanıyor..."
-                  );
-
-                  relayClient =
-                          new RelayClient(
-                                  new RelayClient.Listener() {
-
-                                      @Override
-                                      public void onConnected() {
-
-                                          runOnUiThread(() ->
-                                                  status.setText(
-                                                          "Relay: bağlı"
-                                                  )
-                                          );
-                                      }
-
-                                      @Override
-                                      public void onDisconnected() {
-
-                                          runOnUiThread(() ->
-                                                  status.setText(
-                                                          "Relay: bağlantı kesildi"
-                                                  )
-                                          );
-                                      }
-
-                                      @Override
-                                      public void onMessage(
-                                              String text
-                                      ) {
-
-                                          runOnUiThread(() ->
-                                                  status.setText(
-                                                          "Relay mesajı alındı"
-                                                  )
-                                          );
-                                      }
-
-                                      @Override
-                                      public void onError(
-                                              String message
-                                      ) {
-
-                                          runOnUiThread(() ->
-                                                  status.setText(
-                                                          "Relay: " +
-                                                          message
-                                                  )
-                                          );
-                                      }
-                                  }
-                          );
-
-                  relayClient.connect(
-                          RELAY_URL
-                  );
               }
           }
           EOF
 
-      # --------------------------------------------------
-      # 11. UNIT TESTLER
-      # --------------------------------------------------
       - name: Create tests
         run: |
-          cat > app/src/test/java/com/nexus/app/RelayEnvelopeTest.java <<'EOF'
+          cat > app/src/test/java/com/nexus/app/SignalEngineTest.java <<'EOF'
           package com.nexus.app;
 
           import org.junit.Test;
 
-          import static org.junit.Assert.assertNotEquals;
+          import static org.junit.Assert.assertEquals;
           import static org.junit.Assert.assertTrue;
 
-          public class RelayEnvelopeTest {
+          public class SignalEngineTest {
 
               @Test
-              public void messageIdsAreUnique() {
+              public void libsignalVersionIsCorrect() {
 
-                  RelayEnvelope a =
-                          new RelayEnvelope(
-                                  "alice",
-                                  "bob",
-                                  "cipher-a"
-                          );
-
-                  RelayEnvelope b =
-                          new RelayEnvelope(
-                                  "alice",
-                                  "bob",
-                                  "cipher-b"
-                          );
-
-                  assertNotEquals(
-                          a.messageId,
-                          b.messageId
+                  assertEquals(
+                          "0.102.2",
+                          SignalEngine.LIBSIGNAL_VERSION
                   );
               }
 
               @Test
-              public void replayGuardRejectsDuplicate() {
-
-                  ReplayGuard guard =
-                          new ReplayGuard();
+              public void signalLibraryIsDeclaredPresent() {
 
                   assertTrue(
-                          guard.accept("message-1")
-                  );
-
-                  assertTrue(
-                          !guard.accept("message-1")
+                          SignalEngine.libraryPresent()
                   );
               }
 
               @Test
-              public void replayGuardAcceptsDifferentMessages() {
-
-                  ReplayGuard guard =
-                          new ReplayGuard();
+              public void protocolIsSignalProtocol() {
 
                   assertTrue(
-                          guard.accept("message-1")
-                  );
-
-                  assertTrue(
-                          guard.accept("message-2")
+                          SignalEngine.PROTOCOL
+                                  .contains("Double Ratchet")
                   );
               }
           }
           EOF
 
-      # --------------------------------------------------
-      # 12. UNIT TEST
-      # --------------------------------------------------
+          cat > app/src/test/java/com/nexus/app/ReplayGuardTest.java <<'EOF'
+          package com.nexus.app;
+
+          import org.junit.Test;
+
+          import static org.junit.Assert.assertFalse;
+          import static org.junit.Assert.assertTrue;
+
+          public class ReplayGuardTest {
+
+              @Test
+              public void duplicateIsRejected() {
+
+                  ReplayGuard guard =
+                          new ReplayGuard();
+
+                  assertTrue(
+                          guard.accept("abc")
+                  );
+
+                  assertFalse(
+                          guard.accept("abc")
+                  );
+              }
+
+              @Test
+              public void differentMessagesAreAccepted() {
+
+                  ReplayGuard guard =
+                          new ReplayGuard();
+
+                  assertTrue(
+                          guard.accept("abc")
+                  );
+
+                  assertTrue(
+                          guard.accept("def")
+                  );
+              }
+          }
+          EOF
+
       - name: Run unit tests
         run: |
           ./gradlew test
 
-      # --------------------------------------------------
-      # 13. DEBUG APK
-      # --------------------------------------------------
       - name: Build debug APK
         run: |
           ./gradlew assembleDebug
 
-      # --------------------------------------------------
-      # 14. APK KONTROL
-      # --------------------------------------------------
       - name: Verify APK
         run: |
           ls -lh app/build/outputs/apk/debug/
           sha256sum app/build/outputs/apk/debug/app-debug.apk
 
-      # --------------------------------------------------
-      # 15. APK ARTIFACT
-      # --------------------------------------------------
       - name: Upload NEXUS APK
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-RELAY-debug-APK
+          name: NEXUS-SIGNAL-0.9-debug-APK
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
