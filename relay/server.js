@@ -119,7 +119,8 @@ wss.on("connection", (ws) => {
         send(ws, { type: "error", code: "REPLAY_ID" });
         return;
       }
-      seenIds.set(msg.id, packet.expiresAt);\n      deliveries.set(msg.id, { sender: ws.peerId, recipient: msg.to, expiresAt: packet.expiresAt });
+      seenIds.set(msg.id, packet.expiresAt);
+      deliveries.set(msg.id, { sender: ws.peerId, recipient: msg.to, expiresAt: packet.expiresAt });
       send(recipient, packet);
       send(ws, { type: "delivery", id: msg.id, status: "sent" });
       return;
@@ -174,7 +175,10 @@ setInterval(() => {
   for (const [id, delivery] of deliveries) {
     if (delivery.expiresAt <= now) deliveries.delete(id);
   }
-  for (const [id, expiresAt] of seenIds) {\n    if (expiresAt <= now) seenIds.delete(id);\n  }\n}, Math.max(1000, TTL_MS)).unref();
+  for (const [id, expiresAt] of seenIds) {
+    if (expiresAt <= now) seenIds.delete(id);
+  }
+}, Math.max(1000, TTL_MS)).unref();
 
 httpServer.listen(PORT, "0.0.0.0", () => {
   console.log("NEXUS blind relay listening on " + PORT);
