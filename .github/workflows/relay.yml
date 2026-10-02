@@ -1,0 +1,24 @@
+name: NEXUS Relay Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'relay/**'
+      - '.github/workflows/relay.yml'
+  workflow_dispatch:
+
+jobs:
+  relay-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install
+        working-directory: relay
+        run: npm install
+      - name: Test blind relay
+        working-directory: relay
+        run: npm test
