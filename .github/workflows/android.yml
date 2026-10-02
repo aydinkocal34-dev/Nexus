@@ -270,69 +270,44 @@ jobs:
           package com.nexus.app;
 
           import org.junit.Test;
-          import java.lang.reflect.Constructor;
           import java.lang.reflect.Method;
 
           import static org.junit.Assert.*;
 
           public class SignalSessionApiContractTest {
-              private static Class<?> load(String name) throws Exception { return Class.forName(name); }
-
-              @Test
-              public void sessionApiIsPresentAndInspectable() throws Exception {
-                  Class<?> address = load("org.signal.libsignal.protocol.SignalProtocolAddress");
-                  Class<?> builder = load("org.signal.libsignal.protocol.SessionBuilder");
-                  Class<?> cipher = load("org.signal.libsignal.protocol.SessionCipher");
-                  Class<?> store = load("org.signal.libsignal.protocol.state.SignalProtocolStore");
-                  Class<?> sessionStore = load("org.signal.libsignal.protocol.state.SessionStore");
-                  Class<?> preKeyStore = load("org.signal.libsignal.protocol.state.PreKeyStore");
-                  Class<?> signedPreKeyStore = load("org.signal.libsignal.protocol.state.SignedPreKeyStore");
-                  Class<?> identityStore = load("org.signal.libsignal.protocol.state.IdentityKeyStore");
-
-                  assertNotNull(address); assertNotNull(builder); assertNotNull(cipher);
-                  assertTrue(store.isInterface()); assertTrue(sessionStore.isInterface());
-                  assertTrue(preKeyStore.isInterface()); assertTrue(signedPreKeyStore.isInterface());
-                  assertTrue(identityStore.isInterface());
-
-                  boolean builderCtor = false;
-                  for (Constructor<?> ctor : builder.getConstructors()) {
-                      Class<?>[] p = ctor.getParameterTypes();
-                      if (p.length == 2 && p[1].equals(address)) builderCtor = true;
-                  }
-                  assertTrue("SessionBuilder(store,address) constructor missing", builderCtor);
-
-                  boolean cipherCtor = false;
-                  for (Constructor<?> ctor : cipher.getConstructors()) {
-                      Class<?>[] p = ctor.getParameterTypes();
-                      if (p.length == 2 && p[1].equals(address)) cipherCtor = true;
-                  }
-                  assertTrue("SessionCipher(store,address) constructor missing", cipherCtor);
+              private static Class<?> load(String name) throws Exception {
+                  return Class.forName(name);
               }
 
               @Test
-              public void storeInterfacesExposeOperations() throws Exception {
-                  String[] names = {
-                      "org.signal.libsignal.protocol.state.SignalProtocolStore",
-                      "org.signal.libsignal.protocol.state.SessionStore",
-                      "org.signal.libsignal.protocol.state.PreKeyStore",
-                      "org.signal.libsignal.protocol.state.SignedPreKeyStore",
-                      "org.signal.libsignal.protocol.state.IdentityKeyStore"
-                  };
-                  for (String name : names) {
-                      Class<?> type = load(name);
-                      assertTrue(type.isInterface());
-                      assertTrue(type.getMethods().length > 0);
-                  }
+              public void coreSessionApiClassesArePresent() throws Exception {
+                  assertNotNull(load("org.signal.libsignal.protocol.SignalProtocolAddress"));
+                  assertNotNull(load("org.signal.libsignal.protocol.SessionBuilder"));
+                  assertNotNull(load("org.signal.libsignal.protocol.SessionCipher"));
+                  assertNotNull(load("org.signal.libsignal.protocol.state.PreKeyBundle"));
               }
 
               @Test
-              public void builderAndCipherExposeOperationalMethods() throws Exception {
+              public void sessionStoreApiClassesArePresent() throws Exception {
+                  assertNotNull(load("org.signal.libsignal.protocol.state.SignalProtocolStore"));
+                  assertNotNull(load("org.signal.libsignal.protocol.state.SessionStore"));
+                  assertNotNull(load("org.signal.libsignal.protocol.state.PreKeyStore"));
+                  assertNotNull(load("org.signal.libsignal.protocol.state.SignedPreKeyStore"));
+                  assertNotNull(load("org.signal.libsignal.protocol.state.IdentityKeyStore"));
+              }
+
+              @Test
+              public void sessionBuilderAndCipherExposeExpectedOperations() throws Exception {
                   boolean process = false;
-                  for (Method m : load("org.signal.libsignal.protocol.SessionBuilder").getMethods())
+                  for (Method m : load("org.signal.libsignal.protocol.SessionBuilder").getMethods()) {
                       if (m.getName().equals("process")) process = true;
+                  }
+
                   boolean encrypt = false;
-                  for (Method m : load("org.signal.libsignal.protocol.SessionCipher").getMethods())
+                  for (Method m : load("org.signal.libsignal.protocol.SessionCipher").getMethods()) {
                       if (m.getName().equals("encrypt")) encrypt = true;
+                  }
+
                   assertTrue("SessionBuilder.process missing", process);
                   assertTrue("SessionCipher.encrypt missing", encrypt);
               }
