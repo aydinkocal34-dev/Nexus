@@ -123,3 +123,44 @@ test("relay forwards opaque prekey envelopes without parsing them", async () => 
   alice.close();
   bob.close();
 });
+
+
+test("read receipt is bound to the delivered recipient and message id cannot be replayed", async () => {
+  const alice = await connect();
+  const bob = await connect();
+  const mallory = await connect();
+
+  alice.send(JSON.stringify({type:"register", peerId:"alice-ack-001"}));
+  bob.send(JSON.stringify({type:"register", peerId:"bob-ack-001"}));
+  mallory.send(JSON.stringify({type:"register", peerId:"mallory-001"}));
+  await nextMessage(alice);
+  await nextMessage(bob);
+  await nextMessage(mallory);
+
+  const opaque = Buffer.from("opaque-e2ee").toString("base64");
+  alice.send(JSON.stringify({
+    type:"relay", to:"bob-ack-001", id:"msg-ack-001",
+    ciphertext:opaque, ciphertextType:3, ttlMs:5000
+  }));
+  const received = await nextMessage(bob);
+  assert.equal(received.type, "ciphertext");
+
+  mallory.send(JSON.stringify({type:"ack", id:"msg-ack-001", to:"alice-ack-001"}));
+  const badAck = await nextMessage(mallory);
+  assert.equal(badAck.code, "BAD_ACK");
+
+  bob.send(JSON.stringify({type:"ack", id:"msg-ack-001"}));
+  const read = await nextMessage(alice);
+  assert.equal(read.status, "read");
+
+  alice.send(JSON.stringify({
+    type:"relay", to:"bob-ack-001", id:"msg-ack-001",
+    ciphertext:opaque, ciphertextType:3, ttlMs:5000
+  }));
+  const replay = await nextMessage(alice);
+  assert.equal(replay.code, "REPLAY_ID");
+
+  alice.close();
+  bob.close();
+  mallory.close();
+});
