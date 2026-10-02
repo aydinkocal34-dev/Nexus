@@ -8,6 +8,10 @@ on:
       - '.github/workflows/relay.yml'
   workflow_dispatch:
 
+concurrency:
+  group: nexus-relay-test
+  cancel-in-progress: true
+
 jobs:
   relay-test:
     runs-on: ubuntu-latest
