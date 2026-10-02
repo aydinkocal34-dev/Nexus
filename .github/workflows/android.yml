@@ -45,6 +45,8 @@ jobs:
 
       - name: Create project
         run: |
+          mkdir -p app/src/main/java/com/nexus/app app/src/main/res/drawable
+
           mkdir -p app/src/main/java/com/nexus/app
           mkdir -p app/src/main/res/values
           mkdir -p app/src/test/java/com/nexus/app
