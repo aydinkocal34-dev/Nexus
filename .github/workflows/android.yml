@@ -1012,9 +1012,6 @@ jobs:
           }
           EOF
 
-          EOF
-
-
           cat > app/src/main/java/com/nexus/app/EncryptedStateStore.java <<'EOF'
           package com.nexus.app;
 
