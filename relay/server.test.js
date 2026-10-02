@@ -41,7 +41,8 @@ test.before(async () => {
     env: { ...process.env, PORT: String(PORT), MESSAGE_TTL_MS: "1000" },
     stdio: ["ignore", "pipe", "pipe"]
   });
-  let stderr = "";\n  child.stderr.on("data", d => { stderr += d.toString(); });\n  for (let i = 0; i < 100; i++) {
+  let stderr = "";
+  child.stderr.on("data", d => { stderr += d.toString(); });\n  for (let i = 0; i < 100; i++) {
     try {
       await new Promise((resolve, reject) => {
         const req = http.get("http://127.0.0.1:" + PORT + "/health", res => {
