@@ -74,13 +74,50 @@ test("relay forwards opaque ciphertext and does not require plaintext", async ()
     type:"relay",
     to:"bob-device-001",
     id:"msg-001",
-    ciphertext:opaque
+    ciphertext:opaque,
+    ciphertextType:3,
+    ttlMs:5000
   }));
 
   const received = await nextMessage(bob);
   assert.equal(received.type, "ciphertext");
   assert.equal(received.ciphertext, opaque);
+  assert.equal(received.ciphertextType, 3);
   assert.equal(received.id, "msg-001");
+  assert.equal(typeof received.expiresAt, "number");
+
+  alice.close();
+  bob.close();
+});
+
+
+test("relay forwards opaque prekey envelopes without parsing them", async () => {
+  const alice = await connect();
+  const bob = await connect();
+
+  alice.send(JSON.stringify({type:"register", peerId:"alice-prekey-001"}));
+  bob.send(JSON.stringify({type:"register", peerId:"bob-prekey-001"}));
+  await nextMessage(alice);
+  await nextMessage(bob);
+
+  const bundle = Buffer.from(JSON.stringify({
+    identity:"public-key-material",
+    signedPreKey:"signed-public-key",
+    preKey:"one-time-public-key"
+  })).toString("base64");
+
+  alice.send(JSON.stringify({
+    type:"prekey",
+    to:"bob-prekey-001",
+    id:"bundle-001",
+    bundle,
+    ttlMs:5000
+  }));
+
+  const received = await nextMessage(bob);
+  assert.equal(received.type, "prekey");
+  assert.equal(received.bundle, bundle);
+  assert.equal(received.id, "bundle-001");
   assert.equal(typeof received.expiresAt, "number");
 
   alice.close();
