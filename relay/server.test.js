@@ -41,7 +41,7 @@ test.before(async () => {
     env: { ...process.env, PORT: String(PORT), MESSAGE_TTL_MS: "1000" },
     stdio: "ignore"
   });
-  await wait(300);
+  for (let i = 0; i < 30; i++) {\n    try {\n      await new Promise((resolve, reject) => {\n        const req = http.get("http://127.0.0.1:" + PORT + "/health", res => {\n          res.resume();\n          res.on("end", () => resolve());\n        });\n        req.on("error", reject);\n        req.setTimeout(500, () => { req.destroy(); reject(new Error("health timeout")); });\n      });\n      return;\n    } catch { await wait(100); }\n  }\n  throw new Error("relay server did not become ready");
 });
 
 test.after(() => child.kill());
