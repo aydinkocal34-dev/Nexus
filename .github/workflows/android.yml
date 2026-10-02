@@ -194,6 +194,9 @@ jobs:
           package com.nexus.app;
 
                     import org.signal.libsignal.protocol.IdentityKey;
+          import org.signal.libsignal.protocol.message.CiphertextMessage;
+          import org.signal.libsignal.protocol.message.PreKeySignalMessage;
+          import org.signal.libsignal.protocol.message.SignalMessage;
           import org.signal.libsignal.protocol.IdentityKeyPair;
           import org.signal.libsignal.protocol.SessionBuilder;
           import org.signal.libsignal.protocol.SessionCipher;
@@ -226,13 +229,29 @@ jobs:
 
                   byte[] first = "NEXUS E2EE".getBytes(StandardCharsets.UTF_8);
                   var encrypted = aliceCipher.encrypt(first);
-                  if (!java.util.Arrays.equals(first, bobCipher.decrypt(encrypted))) {
+                  byte[] decryptedFirst;
+                  if (encrypted.getType() == CiphertextMessage.PREKEY_TYPE) {
+                      decryptedFirst = bobCipher.decrypt(new PreKeySignalMessage(encrypted.serialize()));
+                  } else if (encrypted.getType() == CiphertextMessage.WHISPER_TYPE) {
+                      decryptedFirst = bobCipher.decrypt(new SignalMessage(encrypted.serialize()));
+                  } else {
+                      throw new IllegalStateException("Unknown ciphertext type: " + encrypted.getType());
+                  }
+                  if (!java.util.Arrays.equals(first, decryptedFirst)) {
                       throw new IllegalStateException("E2EE round-trip failed");
                   }
 
                   byte[] reply = "OK".getBytes(StandardCharsets.UTF_8);
                   var encryptedReply = bobCipher.encrypt(reply);
-                  if (!java.util.Arrays.equals(reply, aliceCipher.decrypt(encryptedReply))) {
+                  byte[] decryptedReply;
+                  if (encryptedReply.getType() == CiphertextMessage.PREKEY_TYPE) {
+                      decryptedReply = aliceCipher.decrypt(new PreKeySignalMessage(encryptedReply.serialize()));
+                  } else if (encryptedReply.getType() == CiphertextMessage.WHISPER_TYPE) {
+                      decryptedReply = aliceCipher.decrypt(new SignalMessage(encryptedReply.serialize()));
+                  } else {
+                      throw new IllegalStateException("Unknown reply ciphertext type: " + encryptedReply.getType());
+                  }
+                  if (!java.util.Arrays.equals(reply, decryptedReply)) {
                       throw new IllegalStateException("E2EE reply failed");
                   }
                   return "REAL E2EE SESSION ACTIVE\nAlice ↔ Bob\nSignal session + ratchet OK";
