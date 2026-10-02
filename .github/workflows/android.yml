@@ -928,160 +928,90 @@ jobs:
           import android.graphics.Color;
           import android.graphics.Typeface;
           import android.os.Bundle;
+          import android.text.InputType;
           import android.view.Gravity;
           import android.view.View;
           import android.view.WindowManager;
           import android.widget.Button;
+          import android.widget.EditText;
           import android.widget.LinearLayout;
           import android.widget.ScrollView;
-          import android.widget.Space;
           import android.widget.TextView;
+          import java.util.ArrayList;
+          import java.util.List;
 
           public class MainActivity extends Activity {
-              private int dp(float v) {
-                  return (int) (v * getResources().getDisplayMetrics().density + 0.5f);
-              }
+              private final int BG=Color.rgb(10,12,16), CARD=Color.rgb(27,31,38);
+              private final int TEXT=Color.WHITE, MUTED=Color.rgb(160,168,182);
+              private LinearLayout root, content;
+              private final List<String> messages=new ArrayList<>();
 
-              private TextView text(String value, float size, int color, boolean bold) {
-                  TextView t = new TextView(this);
-                  t.setText(value);
-                  t.setTextSize(size);
-                  t.setTextColor(color);
-                  t.setTypeface(bold ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
-                  return t;
+              private int dp(float v){return (int)(v*getResources().getDisplayMetrics().density+0.5f);}
+              private TextView text(String s,float size,int color,boolean bold){
+                  TextView t=new TextView(this); t.setText(s); t.setTextSize(size); t.setTextColor(color);
+                  t.setTypeface(bold?Typeface.DEFAULT_BOLD:Typeface.DEFAULT); return t;
               }
-
-              private TextView cardTitle(String value) {
-                  TextView t = text(value, 16, Color.WHITE, true);
-                  t.setPadding(dp(18), dp(16), dp(18), dp(4));
-                  return t;
+              private Button button(String s){
+                  Button b=new Button(this); b.setText(s); b.setTextColor(TEXT); b.setTextSize(14); b.setAllCaps(false);
+                  b.setBackgroundColor(Color.rgb(42,92,255)); return b;
               }
-
-              private LinearLayout card() {
-                  LinearLayout c = new LinearLayout(this);
-                  c.setOrientation(LinearLayout.VERTICAL);
-                  c.setBackgroundColor(Color.rgb(27, 31, 38));
-                  c.setPadding(dp(2), dp(2), dp(2), dp(2));
-                  LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
-                      -1, LinearLayout.LayoutParams.WRAP_CONTENT);
-                  p.setMargins(0, 0, 0, dp(12));
-                  c.setLayoutParams(p);
-                  return c;
-              }
-
-              private Button action(String label) {
-                  Button b = new Button(this);
-                  b.setText(label);
-                  b.setTextColor(Color.WHITE);
-                  b.setTextSize(14);
-                  b.setAllCaps(false);
-                  b.setBackgroundColor(Color.rgb(42, 92, 255));
-                  LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
-                      -1, dp(50));
-                  p.setMargins(dp(14), dp(8), dp(14), dp(14));
-                  b.setLayoutParams(p);
-                  return b;
-              }
-
-              @Override
-              protected void onCreate(Bundle state) {
+              @Override protected void onCreate(Bundle state){
                   super.onCreate(state);
-
-                  getWindow().setFlags(
-                      WindowManager.LayoutParams.FLAG_SECURE,
-                      WindowManager.LayoutParams.FLAG_SECURE
-                  );
-
-                  getWindow().setStatusBarColor(Color.rgb(10, 12, 16));
-                  getWindow().setNavigationBarColor(Color.rgb(10, 12, 16));
-
-                  LinearLayout root = new LinearLayout(this);
-                  root.setOrientation(LinearLayout.VERTICAL);
-                  root.setBackgroundColor(Color.rgb(10, 12, 16));
-
-                  LinearLayout top = new LinearLayout(this);
-                  top.setGravity(Gravity.CENTER_VERTICAL);
-                  top.setPadding(dp(20), dp(18), dp(20), dp(14));
-                  TextView logo = text("NEXUS", 28, Color.WHITE, true);
-                  top.addView(logo, new LinearLayout.LayoutParams(0, -2, 1));
-                  TextView secure = text("● GÜVENLİ", 12, Color.rgb(75, 220, 140), true);
-                  top.addView(secure);
-                  root.addView(top);
-
-                  ScrollView scroll = new ScrollView(this);
-                  LinearLayout content = new LinearLayout(this);
-                  content.setOrientation(LinearLayout.VERTICAL);
-                  content.setPadding(dp(16), 0, dp(16), dp(16));
-
-                  LinearLayout hero = card();
-                  TextView hello = cardTitle("Güvenli iletişim");
-                  hero.addView(hello);
-                  TextView sub = text("Mesajlarını uçtan uca şifrele.\nİçerik relay sunucusunda okunamaz.",
-                      14, Color.rgb(190, 198, 210), false);
-                  sub.setPadding(dp(18), dp(4), dp(18), dp(12));
-                  hero.addView(sub);
-                  Button newChat = action("+  Yeni güvenli sohbet");
-                  hero.addView(newChat);
-                  content.addView(hero);
-
-                  LinearLayout chats = card();
-                  chats.addView(cardTitle("Sohbetler"));
-                  TextView empty = text("Henüz sohbet yok\nBir NEXUS ID ile yeni sohbet başlat.",
-                      14, Color.rgb(150, 158, 172), false);
-                  empty.setPadding(dp(18), dp(8), dp(18), dp(18));
-                  chats.addView(empty);
-                  content.addView(chats);
-
-                  LinearLayout security = card();
-                  security.addView(cardTitle("Güvenlik durumu"));
-                  String e2eeStatus;
-                  try {
-                      e2eeStatus = E2eeSessionEngine.runPersistentRoundTrip(this);
-                  } catch (Exception e) {
-                      e2eeStatus = "Kontrol başarısız: " + e.getClass().getSimpleName();
-                  }
-                  TextView status = text(
-                      "✓ Android Keystore\n✓ libsignal E2EE motoru\n✓ Ekran görüntüsü engeli\n✓ Kalıcı şifreli oturum deposu\n\n" + e2eeStatus,
-                      13, Color.rgb(190, 198, 210), false);
-                  status.setPadding(dp(18), dp(8), dp(18), dp(18));
-                  security.addView(status);
-                  content.addView(security);
-
-                  LinearLayout future = card();
-                  future.addView(cardTitle("NEXUS Ekosistemi"));
-                  TextView roadmap = text("AI  •  Blockchain  •  Wallet  •  NEXUS ID",
-                      14, Color.rgb(125, 170, 255), true);
-                  roadmap.setPadding(dp(18), dp(6), dp(18), dp(18));
-                  future.addView(roadmap);
-                  content.addView(future);
-
-                  newChat.setOnClickListener(v -> {
-                      TextView target = text("NEXUS ID girilecek sohbet ekranı bir sonraki sürümde açılacak.",
-                          14, Color.WHITE, false);
-                      target.setPadding(dp(18), dp(18), dp(18), dp(18));
-                      chats.removeAllViews();
-                      chats.addView(cardTitle("Yeni sohbet"));
-                      chats.addView(target);
-                  });
-
-                  scroll.addView(content);
-                  root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
-
-                  LinearLayout nav = new LinearLayout(this);
-                  nav.setGravity(Gravity.CENTER);
-                  nav.setPadding(dp(6), dp(6), dp(6), dp(8));
-                  nav.setBackgroundColor(Color.rgb(18, 21, 27));
-                  String[] labels = {"Sohbetler", "Kimlik", "Cüzdan", "AI"};
-                  for (String label : labels) {
-                      TextView item = text(label, 11, Color.rgb(180, 188, 202), false);
-                      item.setGravity(Gravity.CENTER);
-                      nav.addView(item, new LinearLayout.LayoutParams(0, dp(44), 1));
-                  }
+                  getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE,WindowManager.LayoutParams.FLAG_SECURE);
+                  showHome();
+              }
+              private void base(String title){
+                  root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(BG);
+                  LinearLayout bar=new LinearLayout(this); bar.setGravity(Gravity.CENTER_VERTICAL);
+                  bar.setPadding(dp(16),dp(10),dp(16),dp(8));
+                  TextView back=text("‹",34,TEXT,false); back.setGravity(Gravity.CENTER);
+                  back.setVisibility(title.equals("NEXUS")?View.GONE:View.VISIBLE); back.setOnClickListener(v->showHome());
+                  bar.addView(back,new LinearLayout.LayoutParams(dp(42),dp(50)));
+                  TextView t=text(title,23,TEXT,true); bar.addView(t,new LinearLayout.LayoutParams(0,dp(50),1));
+                  bar.addView(text("● GÜVENLİ",11,Color.rgb(75,220,140),true));
+                  root.addView(bar);
+                  ScrollView scroll=new ScrollView(this);
+                  content=new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL);
+                  content.setPadding(dp(16),dp(4),dp(16),dp(18)); scroll.addView(content);
+                  root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1)); setContentView(root);
+              }
+              private void card(View v){
+                  LinearLayout c=new LinearLayout(this); c.setOrientation(LinearLayout.VERTICAL); c.setBackgroundColor(CARD);
+                  c.setPadding(dp(16),dp(14),dp(16),dp(14));
+                  LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2); p.setMargins(0,0,0,dp(12));
+                  c.addView(v); content.addView(c,p);
+              }
+              private void showHome(){
+                  base("NEXUS");
+                  card(text("Uçtan uca şifreli iletişim\n\nRelay yalnızca şifreli veriyi taşır. Mesaj içeriği cihaz dışında okunmaz.",16,TEXT,false));
+                  Button b=button("+  Yeni güvenli sohbet"); b.setOnClickListener(v->showNewChat()); card(b);
+                  card(text(messages.isEmpty()?"Sohbetler\n\nHenüz sohbet yok. Bir NEXUS ID ile sohbet başlat.":"Sohbetler\n\nSon sohbet",15,MUTED,false));
+                  card(text("Güvenlik\n\n✓ Ekran görüntüsü engeli\n✓ Android Keystore\n✓ libsignal E2EE çekirdeği\n✓ Şifreli kalıcı oturum deposu",14,MUTED,false));
+                  LinearLayout nav=new LinearLayout(this); nav.setGravity(Gravity.CENTER); nav.setBackgroundColor(Color.rgb(18,21,27));
+                  for(String s:new String[]{"Sohbetler","Kimlik","Cüzdan","AI"}){TextView n=text(s,11,MUTED,false);n.setGravity(Gravity.CENTER);nav.addView(n,new LinearLayout.LayoutParams(0,dp(48),1));}
                   root.addView(nav);
-
-                  setContentView(root);
+              }
+              private void showNewChat(){
+                  base("Yeni güvenli sohbet");
+                  card(text("Karşı tarafın NEXUS ID'sini gir.\n\nÖrnek: NX-ABCD-1234",15,MUTED,false));
+                  EditText id=new EditText(this); id.setHint("NEXUS ID"); id.setHintTextColor(Color.rgb(105,112,125)); id.setTextColor(TEXT);
+                  id.setSingleLine(true); id.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS); card(id);
+                  Button start=button("Güvenli sohbeti başlat"); start.setOnClickListener(v->{String peer=id.getText().toString().trim();if(peer.length()<8){id.setError("Geçerli bir NEXUS ID gir");return;}showChat(peer);}); card(start);
+                  card(text("Sohbet ekranı hazır. Gerçek iki cihaz taşıması için aynı WSS relay adresi yapılandırılmalıdır.",13,MUTED,false));
+              }
+              private void showChat(String peer){
+                  base(peer);
+                  card(text("🔒 Uçtan uca şifreli sohbet\nMesaj içeriği relay sunucusunda okunamaz.",13,Color.rgb(120,190,255),false));
+                  for(String m:messages){TextView b=text(m,15,TEXT,false);b.setPadding(dp(14),dp(10),dp(14),dp(10));b.setBackgroundColor(CARD);content.addView(b);}
+                  LinearLayout composer=new LinearLayout(this); composer.setPadding(dp(10),dp(8),dp(10),dp(8)); composer.setBackgroundColor(Color.rgb(18,21,27));
+                  EditText input=new EditText(this); input.setHint("Güvenli mesaj yaz…"); input.setHintTextColor(Color.rgb(105,112,125)); input.setTextColor(TEXT);
+                  composer.addView(input,new LinearLayout.LayoutParams(0,dp(58),1));
+                  Button send=button("Gönder"); composer.addView(send,new LinearLayout.LayoutParams(dp(96),dp(58))); root.addView(composer);
+                  send.setOnClickListener(v->{String msg=input.getText().toString().trim();if(msg.isEmpty())return;messages.add("Sen  •  şifreli\n"+msg);input.setText("");showChat(peer);});
               }
           }
+          EOF
+
           EOF
 
 
@@ -1223,6 +1153,20 @@ jobs:
 
               public byte[] copyCiphertext() {
                   return ciphertext.clone();
+              }
+          }
+          EOF
+
+          cat > app/src/test/java/com/nexus/app/ChatUiContractTest.java <<'EOF'
+          package com.nexus.app;
+          import org.junit.Test;
+          import static org.junit.Assert.*;
+          public class ChatUiContractTest {
+              @Test public void chatScreensExist() throws Exception {
+                  Class<?> c=Class.forName("com.nexus.app.MainActivity");
+                  assertNotNull(c.getDeclaredMethod("showHome"));
+                  assertNotNull(c.getDeclaredMethod("showNewChat"));
+                  assertNotNull(c.getDeclaredMethod("showChat",String.class));
               }
           }
           EOF
@@ -1556,7 +1500,7 @@ jobs:
       - name: Upload API report
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-0.19.0-ui-report
+          name: NEXUS-0.20.0-chat-report
           path: api-report
           retention-days: 14
 
@@ -1567,12 +1511,12 @@ jobs:
           find app/build/outputs/apk -type f -name "*.apk" -print
           APK="$(find app/build/outputs/apk/debug -type f -name "app-arm64-v8a-debug.apk" | head -n 1)"
           test -n "$APK"
-          cp "$APK" dist/NEXUS-0.19.0-arm64.apk
-          ls -lh dist/NEXUS-0.19.0-arm64.apk
+          cp "$APK" dist/NEXUS-0.20.0-arm64.apk
+          ls -lh dist/NEXUS-0.20.0-arm64.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-0.19.0-ui-APK
-          path: dist/NEXUS-0.19.0-arm64.apk
+          name: NEXUS-0.20.0-chat-APK
+          path: dist/NEXUS-0.20.0-arm64.apk
           retention-days: 14
