@@ -115,8 +115,8 @@ jobs:
                   minSdk 26
                   targetSdk 35
 
-                  versionCode 19
-                  versionName '0.15.0-real-e2ee-session'
+                  versionCode 20
+                  versionName '0.16.0-e2ee-engine'
               }
 
               compileOptions {
@@ -190,6 +190,87 @@ jobs:
           </resources>
           EOF
 
+          cat > app/src/main/java/com/nexus/app/E2eeSessionEngine.java <<'EOF'
+          package com.nexus.app;
+
+          import org.signal.libsignal.protocol.CiphertextMessage;
+          import org.signal.libsignal.protocol.IdentityKey;
+          import org.signal.libsignal.protocol.IdentityKeyPair;
+          import org.signal.libsignal.protocol.SessionBuilder;
+          import org.signal.libsignal.protocol.SessionCipher;
+          import org.signal.libsignal.protocol.SignalProtocolAddress;
+          import org.signal.libsignal.protocol.ecc.ECKeyPair;
+          import org.signal.libsignal.protocol.kem.KEMKeyPair;
+          import org.signal.libsignal.protocol.kem.KEMKeyType;
+          import org.signal.libsignal.protocol.state.impl.InMemorySignalProtocolStore;
+          import org.signal.libsignal.protocol.state.KyberPreKeyRecord;
+          import org.signal.libsignal.protocol.state.PreKeyBundle;
+          import org.signal.libsignal.protocol.state.PreKeyRecord;
+          import org.signal.libsignal.protocol.state.SignedPreKeyRecord;
+          import org.signal.libsignal.protocol.util.KeyHelper;
+          import org.signal.libsignal.protocol.util.Medium;
+          import java.nio.charset.StandardCharsets;
+          import java.util.Random;
+
+          public final class E2eeSessionEngine {
+              private static final SignalProtocolAddress ALICE = new SignalProtocolAddress("NX-LOCAL-ALICE", 1);
+              private static final SignalProtocolAddress BOB = new SignalProtocolAddress("NX-LOCAL-BOB", 1);
+              private E2eeSessionEngine() {}
+
+              public static String runLocalRoundTrip() throws Exception {
+                  Device alice = new Device();
+                  Device bob = new Device();
+                  PreKeyBundle bobBundle = createBundle(bob);
+                  new SessionBuilder(alice.store, BOB, ALICE).process(bobBundle);
+                  SessionCipher aliceCipher = new SessionCipher(alice.store, ALICE, BOB);
+                  SessionCipher bobCipher = new SessionCipher(bob.store, BOB, ALICE);
+
+                  byte[] first = "NEXUS E2EE".getBytes(StandardCharsets.UTF_8);
+                  CiphertextMessage encrypted = aliceCipher.encrypt(first);
+                  if (!java.util.Arrays.equals(first, bobCipher.decrypt(encrypted))) {
+                      throw new IllegalStateException("E2EE round-trip failed");
+                  }
+
+                  byte[] reply = "OK".getBytes(StandardCharsets.UTF_8);
+                  CiphertextMessage encryptedReply = bobCipher.encrypt(reply);
+                  if (!java.util.Arrays.equals(reply, aliceCipher.decrypt(encryptedReply))) {
+                      throw new IllegalStateException("E2EE reply failed");
+                  }
+                  return "REAL E2EE SESSION ACTIVE\nAlice ↔ Bob\nSignal session + ratchet OK";
+              }
+
+              private static final class Device {
+                  final IdentityKeyPair identity;
+                  final InMemorySignalProtocolStore store;
+                  Device() {
+                      ECKeyPair keys = ECKeyPair.generate();
+                      identity = new IdentityKeyPair(new IdentityKey(keys.getPublicKey()), keys.getPrivateKey());
+                      store = new InMemorySignalProtocolStore(identity, KeyHelper.generateRegistrationId(false));
+                  }
+              }
+
+              private static PreKeyBundle createBundle(Device device) throws Exception {
+                  ECKeyPair preKey = ECKeyPair.generate();
+                  ECKeyPair signedPreKey = ECKeyPair.generate();
+                  byte[] signedSignature = device.identity.getPrivateKey().calculateSignature(signedPreKey.getPublicKey().serialize());
+                  KEMKeyPair kyber = KEMKeyPair.generate(KEMKeyType.KYBER_1024);
+                  byte[] kyberSignature = device.identity.getPrivateKey().calculateSignature(kyber.getPublicKey().serialize());
+
+                  Random random = new Random();
+                  int preKeyId = random.nextInt(Medium.MAX_VALUE);
+                  int signedPreKeyId = random.nextInt(Medium.MAX_VALUE);
+                  int kyberPreKeyId = random.nextInt(Medium.MAX_VALUE);
+                  device.store.storePreKey(preKeyId, new PreKeyRecord(preKeyId, preKey));
+                  device.store.storeSignedPreKey(signedPreKeyId, new SignedPreKeyRecord(signedPreKeyId, System.currentTimeMillis(), signedPreKey, signedSignature));
+                  device.store.storeKyberPreKey(kyberPreKeyId, new KyberPreKeyRecord(kyberPreKeyId, System.currentTimeMillis(), kyber, kyberSignature));
+
+                  return new PreKeyBundle(device.store.getLocalRegistrationId(), 1, preKeyId, preKey.getPublicKey(),
+                      signedPreKeyId, signedPreKey.getPublicKey(), signedSignature, device.identity.getPublicKey(),
+                      kyberPreKeyId, kyber.getPublicKey(), kyberSignature);
+              }
+          }
+          EOF
+
           cat > app/src/main/java/com/nexus/app/MainActivity.java <<'EOF'
           package com.nexus.app;
 
@@ -221,8 +302,8 @@ jobs:
                       "✓ libsignal-android 0.102.2\n" +
                       "✓ Android Keystore altyapısı\n" +
                       "✓ FLAG_SECURE\n\n" +
-                      "Session API sözleşmesi doğrulama aşaması.\n\n" +
-                      "Gerçek E2EE session henüz aktif değil."
+                      "Gerçek libsignal E2EE motoru uygulamaya bağlandı.\n\n" +
+                      E2eeSessionEngine.runLocalRoundTrip()
                   );
 
                   setContentView(view);
