@@ -115,8 +115,8 @@ jobs:
                   minSdk 26
                   targetSdk 35
 
-                  versionCode 20
-                  versionName '0.16.0-e2ee-engine'
+                  versionCode 21
+                  versionName '0.16.1-e2ee-engine'
               }
 
               compileOptions {
@@ -193,8 +193,7 @@ jobs:
           cat > app/src/main/java/com/nexus/app/E2eeSessionEngine.java <<'EOF'
           package com.nexus.app;
 
-          import org.signal.libsignal.protocol.CiphertextMessage;
-          import org.signal.libsignal.protocol.IdentityKey;
+                    import org.signal.libsignal.protocol.IdentityKey;
           import org.signal.libsignal.protocol.IdentityKeyPair;
           import org.signal.libsignal.protocol.SessionBuilder;
           import org.signal.libsignal.protocol.SessionCipher;
@@ -226,13 +225,13 @@ jobs:
                   SessionCipher bobCipher = new SessionCipher(bob.store, BOB, ALICE);
 
                   byte[] first = "NEXUS E2EE".getBytes(StandardCharsets.UTF_8);
-                  CiphertextMessage encrypted = aliceCipher.encrypt(first);
+                  var encrypted = aliceCipher.encrypt(first);
                   if (!java.util.Arrays.equals(first, bobCipher.decrypt(encrypted))) {
                       throw new IllegalStateException("E2EE round-trip failed");
                   }
 
                   byte[] reply = "OK".getBytes(StandardCharsets.UTF_8);
-                  CiphertextMessage encryptedReply = bobCipher.encrypt(reply);
+                  var encryptedReply = bobCipher.encrypt(reply);
                   if (!java.util.Arrays.equals(reply, aliceCipher.decrypt(encryptedReply))) {
                       throw new IllegalStateException("E2EE reply failed");
                   }
@@ -555,13 +554,13 @@ jobs:
       - name: Upload API report
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-0.15.0-real-e2ee-report
+          name: NEXUS-0.16.1-real-e2ee-report
           path: api-report
           retention-days: 14
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-0.15.0-real-e2ee-APK
+          name: NEXUS-0.16.1-real-e2ee-APK
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
