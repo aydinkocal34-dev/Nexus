@@ -115,8 +115,8 @@ jobs:
                   minSdk 26
                   targetSdk 35
 
-                  versionCode 22
-                  versionName '0.16.2-e2ee-engine'
+                  versionCode 23
+                  versionName '0.16.3-e2ee-engine'
               }
 
               compileOptions {
@@ -322,7 +322,7 @@ jobs:
 
                   view.setText(
                       "NEXUS\n\n" +
-                      "0.15.0 REAL E2EE SESSION\n\n" +
+                      "0.16.3 REAL E2EE SESSION\n\n" +
                       "✓ libsignal-client 0.102.2\n" +
                       "✓ libsignal-android 0.102.2\n" +
                       "✓ Android Keystore altyapısı\n" +
@@ -580,13 +580,13 @@ jobs:
       - name: Upload API report
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-0.16.1-real-e2ee-report
+          name: NEXUS-0.16.3-real-e2ee-report
           path: api-report
           retention-days: 14
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-0.16.1-real-e2ee-APK
+          name: NEXUS-0.16.3-real-e2ee-APK
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
