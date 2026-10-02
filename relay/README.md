@@ -24,3 +24,6 @@ Production deployment must put the WebSocket endpoint behind TLS (wss://), authe
 
 
 CI note: relay tests run automatically on changes under `relay/` or this workflow.
+
+
+CI verification marker: relay-test-2026-10-02.
