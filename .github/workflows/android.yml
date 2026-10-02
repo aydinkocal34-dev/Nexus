@@ -607,6 +607,14 @@ jobs:
               }
 
               public void connect(String wsUrl, String peerId) {
+                  if (wsUrl == null || !wsUrl.startsWith("wss://")) {
+                      main.post(() -> listener.onError("Relay requires WSS/TLS"));
+                      return;
+                  }
+                  if (peerId == null || peerId.length() < 8 || peerId.length() > 128) {
+                      main.post(() -> listener.onError("Invalid peer ID"));
+                      return;
+                  }
                   Request request = new Request.Builder().url(wsUrl).build();
                   socket = client.newWebSocket(request, new WebSocketListener() {
                       @Override public void onOpen(WebSocket webSocket, Response response) {
@@ -615,7 +623,6 @@ jobs:
                               msg.put("type", "register");
                               msg.put("peerId", peerId);
                               webSocket.send(msg.toString());
-                              main.post(listener::onConnected);
                           } catch (Exception e) {
                               main.post(() -> listener.onError(e.getMessage()));
                           }
@@ -625,7 +632,9 @@ jobs:
                           try {
                               JSONObject msg = new JSONObject(text);
                               String type = msg.optString("type");
-                              if ("ciphertext".equals(type)) {
+                              if ("registered".equals(type)) {
+                                  main.post(listener::onConnected);
+                              } else if ("ciphertext".equals(type)) {
                                   String id = msg.getString("id");
                                   String from = msg.getString("from");
                                   byte[] ciphertext = Base64.getDecoder().decode(msg.getString("ciphertext"));
