@@ -39,9 +39,9 @@ test.before(async () => {
   child = spawn(process.execPath, ["server.js"], {
     cwd: __dirname,
     env: { ...process.env, PORT: String(PORT), MESSAGE_TTL_MS: "1000" },
-    stdio: "ignore"
+    stdio: ["ignore", "pipe", "pipe"]
   });
-  for (let i = 0; i < 30; i++) {
+  let stderr = "";\n  child.stderr.on("data", d => { stderr += d.toString(); });\n  for (let i = 0; i < 100; i++) {
     try {
       await new Promise((resolve, reject) => {
         const req = http.get("http://127.0.0.1:" + PORT + "/health", res => {
@@ -54,7 +54,7 @@ test.before(async () => {
       return;
     } catch { await wait(100); }
   }
-  throw new Error("relay server did not become ready");
+  throw new Error("relay server did not become ready" + (child.exitCode !== null ? " (exit " + child.exitCode + "): " + stderr : "") );
 });
 
 test.after(() => child.kill());
