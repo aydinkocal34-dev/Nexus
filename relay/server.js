@@ -10,6 +10,7 @@ const RATE_LIMIT = Number(process.env.RATE_LIMIT_PER_MINUTE || 120);
 const peers = new Map();
 const buckets = new Map();
 const deliveries = new Map();
+const seenIds = new Map();
 
 function token() {
   return crypto.randomBytes(16).toString("hex");
@@ -118,7 +119,7 @@ wss.on("connection", (ws) => {
         send(ws, { type: "error", code: "REPLAY_ID" });
         return;
       }
-      deliveries.set(msg.id, { sender: ws.peerId, recipient: msg.to, expiresAt: packet.expiresAt });
+      seenIds.set(msg.id, packet.expiresAt);\n      deliveries.set(msg.id, { sender: ws.peerId, recipient: msg.to, expiresAt: packet.expiresAt });
       send(recipient, packet);
       send(ws, { type: "delivery", id: msg.id, status: "sent" });
       return;
