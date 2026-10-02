@@ -125,6 +125,16 @@ jobs:
                   sourceCompatibility JavaVersion.VERSION_17
                   targetCompatibility JavaVersion.VERSION_17
               }
+
+              // Build a phone-sized ARM64 APK instead of bundling every CPU architecture.
+              splits {
+                  abi {
+                      enable true
+                      reset()
+                      include "arm64-v8a"
+                      universalApk false
+                  }
+              }
           }
 
           dependencies {
@@ -1342,5 +1352,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: NEXUS-0.18.0-relay-transport-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/debug/*-arm64-v8a.apk
           retention-days: 14
