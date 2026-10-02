@@ -73,7 +73,7 @@ test("relay forwards opaque ciphertext and does not require plaintext", async ()
   alice.send(JSON.stringify({
     type:"relay",
     to:"bob-device-001",
-    id:"msg-001",
+    id:"msg-0001",
     ciphertext:opaque,
     ciphertextType:3,
     ttlMs:5000
@@ -109,7 +109,7 @@ test("relay forwards opaque prekey envelopes without parsing them", async () => 
   alice.send(JSON.stringify({
     type:"prekey",
     to:"bob-prekey-001",
-    id:"bundle-001",
+    id:"bundle-0001",
     bundle,
     ttlMs:5000
   }));
@@ -139,7 +139,7 @@ test("read receipt is bound to the delivered recipient and message id cannot be 
 
   const opaque = Buffer.from("opaque-e2ee").toString("base64");
   alice.send(JSON.stringify({
-    type:"relay", to:"bob-ack-001", id:"msg-ack-001",
+    type:"relay", to:"bob-ack-001", id:"msg-ack-0001",
     ciphertext:opaque, ciphertextType:3, ttlMs:5000
   }));
   const received = await nextMessage(bob);
