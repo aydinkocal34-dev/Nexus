@@ -72,6 +72,15 @@ test("relay forwards opaque ciphertext",async()=>{
   a.close();b.close();
 });
 
+test("relay rejects duplicate peer registration",async()=>{
+  const a=await connect(),b=await connect();
+  a.send(JSON.stringify({type:"register",peerId:"duplicate-peer-001"}));
+  assert.equal((await next(a)).type,"registered");
+  b.send(JSON.stringify({type:"register",peerId:"duplicate-peer-001"}));
+  assert.equal((await next(b)).code,"PEER_ALREADY_CONNECTED");
+  a.close();b.close();
+});
+
 test("relay forwards opaque prekey envelope",async()=>{
   const a=await connect(),b=await connect();
   a.send(JSON.stringify({type:"register",peerId:"alice-prekey-001"}));
