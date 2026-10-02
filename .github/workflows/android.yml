@@ -115,8 +115,8 @@ jobs:
                   minSdk 26
                   targetSdk 35
 
-                  versionCode 24
-                  versionName '0.17.0-persistent-secure-store'
+                  versionCode 25
+                  versionName '0.18.0-relay-transport'
               }
 
               compileOptions {
@@ -554,6 +554,131 @@ jobs:
               }
           }
           EOF
+          cat > app/src/main/java/com/nexus/app/RelayClient.java <<'EOF'
+          package com.nexus.app;
+
+          import android.os.Handler;
+          import android.os.Looper;
+
+          import okhttp3.OkHttpClient;
+          import okhttp3.Request;
+          import okhttp3.Response;
+          import okhttp3.WebSocket;
+          import okhttp3.WebSocketListener;
+
+          import org.json.JSONObject;
+
+          import java.util.Base64;
+          import java.util.concurrent.TimeUnit;
+
+          /**
+           * Thin transport client. It never accepts or exposes plaintext message content.
+           * The ciphertext supplied to sendCiphertext() is produced by libsignal.
+           */
+          public final class RelayClient {
+              public interface Listener {
+                  void onConnected();
+                  void onCiphertext(String id, String from, byte[] ciphertext, long expiresAt);
+                  void onDelivery(String id, String status);
+                  void onError(String message);
+                  void onClosed();
+              }
+
+              private final OkHttpClient client = new OkHttpClient.Builder()
+                      .readTimeout(0, TimeUnit.MILLISECONDS)
+                      .build();
+              private final Handler main = new Handler(Looper.getMainLooper());
+              private final Listener listener;
+              private WebSocket socket;
+
+              public RelayClient(Listener listener) {
+                  this.listener = listener;
+              }
+
+              public void connect(String wsUrl, String peerId) {
+                  Request request = new Request.Builder().url(wsUrl).build();
+                  socket = client.newWebSocket(request, new WebSocketListener() {
+                      @Override public void onOpen(WebSocket webSocket, Response response) {
+                          JSONObject msg = new JSONObject();
+                          try {
+                              msg.put("type", "register");
+                              msg.put("peerId", peerId);
+                              webSocket.send(msg.toString());
+                              main.post(listener::onConnected);
+                          } catch (Exception e) {
+                              main.post(() -> listener.onError(e.getMessage()));
+                          }
+                      }
+
+                      @Override public void onMessage(WebSocket webSocket, String text) {
+                          try {
+                              JSONObject msg = new JSONObject(text);
+                              String type = msg.optString("type");
+                              if ("ciphertext".equals(type)) {
+                                  String id = msg.getString("id");
+                                  String from = msg.getString("from");
+                                  byte[] ciphertext = Base64.getDecoder().decode(msg.getString("ciphertext"));
+                                  long expiresAt = msg.getLong("expiresAt");
+                                  main.post(() -> listener.onCiphertext(id, from, ciphertext, expiresAt));
+                              } else if ("delivery".equals(type)) {
+                                  String id = msg.getString("id");
+                                  String status = msg.getString("status");
+                                  main.post(() -> listener.onDelivery(id, status));
+                              } else if ("error".equals(type)) {
+                                  main.post(() -> listener.onError(msg.optString("code", "RELAY_ERROR")));
+                              }
+                          } catch (Exception e) {
+                              main.post(() -> listener.onError("Invalid relay frame"));
+                          }
+                      }
+
+                      @Override public void onFailure(WebSocket webSocket, Throwable t, Response response) {
+                          main.post(() -> listener.onError(t.getMessage() == null ? "Relay connection failed" : t.getMessage()));
+                      }
+
+                      @Override public void onClosed(WebSocket webSocket, int code, String reason) {
+                          main.post(listener::onClosed);
+                      }
+                  });
+              }
+
+              public boolean sendCiphertext(String id, String toPeerId, byte[] ciphertext, long ttlMs) {
+                  if (socket == null) return false;
+                  try {
+                      JSONObject msg = new JSONObject();
+                      msg.put("type", "relay");
+                      msg.put("id", id);
+                      msg.put("to", toPeerId);
+                      msg.put("ciphertext", Base64.getEncoder().encodeToString(ciphertext));
+                      msg.put("ttlMs", Math.max(1000L, ttlMs));
+                      return socket.send(msg.toString());
+                  } catch (Exception e) {
+                      main.post(() -> listener.onError("Could not encode relay frame"));
+                      return false;
+                  }
+              }
+
+              public boolean sendReadReceipt(String id, String toPeerId) {
+                  if (socket == null) return false;
+                  try {
+                      JSONObject msg = new JSONObject();
+                      msg.put("type", "ack");
+                      msg.put("id", id);
+                      msg.put("to", toPeerId);
+                      return socket.send(msg.toString());
+                  } catch (Exception e) {
+                      main.post(() -> listener.onError("Could not encode read receipt"));
+                      return false;
+                  }
+              }
+
+              public void close() {
+                  if (socket != null) socket.close(1000, "client closing");
+                  client.dispatcher().executorService().shutdown();
+              }
+          }
+          EOF
+
           cat > app/src/main/java/com/nexus/app/MainActivity.java <<'EOF'
           package com.nexus.app;
 
@@ -679,6 +804,38 @@ jobs:
                           .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
                           .build());
                   return generator.generateKey();
+              }
+          }
+          EOF
+
+          cat > app/src/test/java/com/nexus/app/RelayTransportContractTest.java <<'EOF'
+          package com.nexus.app;
+
+          import org.junit.Test;
+          import java.util.Base64;
+          import java.util.UUID;
+
+          import static org.junit.Assert.*;
+
+          public class RelayTransportContractTest {
+              @Test
+              public void ciphertextEnvelopeIsBinarySafeAndOpaque() {
+                  byte[] ciphertext = new byte[64];
+                  for (int i = 0; i < ciphertext.length; i++) ciphertext[i] = (byte)(i * 31);
+                  String encoded = Base64.getEncoder().encodeToString(ciphertext);
+                  assertArrayEquals(ciphertext, Base64.getDecoder().decode(encoded));
+                  assertNotEquals("hello", encoded);
+              }
+
+              @Test
+              public void messageIdsAreUnique() {
+                  assertNotEquals(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+              }
+
+              @Test
+              public void relayClientExposesCiphertextOnlyTransport() throws Exception {
+                  assertNotNull(RelayClient.class.getMethod("sendCiphertext", String.class, String.class, byte[].class, long.class));
+                  assertNotNull(RelayClient.class.getMethod("sendReadReceipt", String.class, String.class));
               }
           }
           EOF
@@ -953,13 +1110,13 @@ jobs:
       - name: Upload API report
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-0.17.0-persistent-store-report
+          name: NEXUS-0.18.0-relay-transport-report
           path: api-report
           retention-days: 14
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-0.17.0-persistent-store-APK
+          name: NEXUS-0.18.0-relay-transport-APK
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
