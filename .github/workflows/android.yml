@@ -1568,11 +1568,11 @@ jobs:
           APK="$(find app/build/outputs/apk/debug -type f -name "app-arm64-v8a-debug.apk" | head -n 1)"
           test -n "$APK"
           cp "$APK" dist/NEXUS-0.19.0-arm64.apk
-          ls -lh dist/NEXUS-0.18.0-arm64.apk
+          ls -lh dist/NEXUS-0.19.0-arm64.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: NEXUS-0.19.0-ui-APK
-          path: dist/NEXUS-0.18.0-arm64.apk
+          path: dist/NEXUS-0.19.0-arm64.apk
           retention-days: 14
