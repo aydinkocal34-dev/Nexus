@@ -190,21 +190,297 @@ jobs:
           </resources>
           EOF
 
+          cat > app/src/main/java/com/nexus/app/PersistentSignalProtocolStore.java <<'EOF'
+          package com.nexus.app;
+
+          import org.signal.libsignal.protocol.IdentityKey;
+          import org.signal.libsignal.protocol.IdentityKeyPair;
+          import org.signal.libsignal.protocol.NoSessionException;
+          import org.signal.libsignal.protocol.ReusedBaseKeyException;
+          import org.signal.libsignal.protocol.SignalProtocolAddress;
+          import org.signal.libsignal.protocol.InvalidKeyIdException;
+          import org.signal.libsignal.protocol.groups.state.SenderKeyRecord;
+          import org.signal.libsignal.protocol.state.KyberPreKeyRecord;
+          import org.signal.libsignal.protocol.state.PreKeyRecord;
+          import org.signal.libsignal.protocol.state.SessionRecord;
+          import org.signal.libsignal.protocol.state.SignedPreKeyRecord;
+          import org.signal.libsignal.protocol.state.impl.InMemorySignalProtocolStore;
+          import org.signal.libsignal.protocol.ecc.ECPublicKey;
+
+          import android.content.Context;
+          import android.util.Base64;
+
+          import java.nio.charset.StandardCharsets;
+          import java.security.SecureRandom;
+          import java.util.ArrayList;
+          import java.util.List;
+          import java.util.UUID;
+
+          /**
+           * Persistent Signal store backed by Android Keystore-encrypted state.
+           * Libsignal record serialization remains owned by libsignal; this class only persists
+           * those opaque records and never implements cryptography itself.
+           */
+          public final class PersistentSignalProtocolStore extends InMemorySignalProtocolStore {
+              private final EncryptedStateStore storage;
+              private final String namespace;
+
+              public PersistentSignalProtocolStore(Context context, String namespace) throws Exception {
+                  super(loadIdentity(context, namespace), loadRegistrationId(context, namespace));
+                  this.storage = new EncryptedStateStore(context);
+                  this.namespace = namespace;
+              }
+
+              private static IdentityKeyPair loadIdentity(Context context, String ns) throws Exception {
+                  EncryptedStateStore s = new EncryptedStateStore(context);
+                  byte[] bytes = s.get(key(ns, "identity"));
+                  if (bytes != null) return new IdentityKeyPair(bytes);
+                  IdentityKeyPair pair = IdentityKeyPair.generate();
+                  s.put(key(ns, "identity"), pair.serialize());
+                  return pair;
+              }
+
+              private static int loadRegistrationId(Context context, String ns) throws Exception {
+                  EncryptedStateStore s = new EncryptedStateStore(context);
+                  byte[] bytes = s.get(key(ns, "registration"));
+                  if (bytes != null) return Integer.parseInt(new String(bytes, StandardCharsets.UTF_8));
+                  int id = 1 + new SecureRandom().nextInt(16379);
+                  s.put(key(ns, "registration"), Integer.toString(id).getBytes(StandardCharsets.UTF_8));
+                  return id;
+              }
+
+              private static String key(String ns, String suffix) {
+                  return "signal/" + ns + "/" + suffix;
+              }
+
+              private String k(String type, String id) {
+                  return key(namespace, type + "/" + id);
+              }
+
+              private static String addressId(SignalProtocolAddress a) {
+                  return Base64.encodeToString(a.getName().getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP)
+                          + "_" + a.getDeviceId();
+              }
+
+              private byte[] get(String k) throws Exception { return storage.get(k); }
+              private void put(String k, byte[] v) throws Exception { storage.put(k, v); }
+              private void remove(String k) { storage.remove(k); }
+
+              private List<String> index(String type) throws Exception {
+                  byte[] b = get(k("index", type));
+                  List<String> out = new ArrayList<>();
+                  if (b == null || b.length == 0) return out;
+                  for (String x : new String(b, StandardCharsets.UTF_8).split("\n")) {
+                      if (!x.isEmpty()) out.add(x);
+                  }
+                  return out;
+              }
+
+              private void addIndex(String type, String id) throws Exception {
+                  List<String> xs = index(type);
+                  if (!xs.contains(id)) xs.add(id);
+                  put(k("index", type), String.join("\n", xs).getBytes(StandardCharsets.UTF_8));
+              }
+
+              private void removeIndex(String type, String id) throws Exception {
+                  List<String> xs = index(type);
+                  xs.remove(id);
+                  put(k("index", type), String.join("\n", xs).getBytes(StandardCharsets.UTF_8));
+              }
+
+              @Override public void storeSession(SignalProtocolAddress a, SessionRecord r) {
+                  super.storeSession(a, r);
+                  try { put(k("session", addressId(a)), r.serialize()); addIndex("session", addressId(a)); }
+                  catch (Exception e) { throw new IllegalStateException("Persistent session write failed", e); }
+              }
+
+              @Override public SessionRecord loadSession(SignalProtocolAddress a) {
+                  try {
+                      byte[] b = get(k("session", addressId(a)));
+                      if (b != null) {
+                          SessionRecord r = new SessionRecord(b);
+                          super.storeSession(a, r);
+                          return r;
+                      }
+                  } catch (Exception e) { throw new IllegalStateException("Persistent session read failed", e); }
+                  return super.loadSession(a);
+              }
+
+              @Override public boolean containsSession(SignalProtocolAddress a) {
+                  try { if (get(k("session", addressId(a))) != null) return true; }
+                  catch (Exception e) { throw new IllegalStateException(e); }
+                  return super.containsSession(a);
+              }
+
+              @Override public void deleteSession(SignalProtocolAddress a) {
+                  super.deleteSession(a);
+                  try { remove(k("session", addressId(a))); removeIndex("session", addressId(a)); }
+                  catch (Exception e) { throw new IllegalStateException(e); }
+              }
+
+              @Override public void deleteAllSessions(String name) {
+                  try {
+                      for (String id : index("session")) {
+                          byte[] b = get(k("session", id));
+                          if (b != null) {
+                              // index entries encode the name, so only remove matching decoded prefix.
+                              String encodedName = id.substring(0, id.lastIndexOf('_'));
+                              String decoded = new String(Base64.decode(encodedName, Base64.NO_WRAP), StandardCharsets.UTF_8);
+                              if (decoded.equals(name)) { remove(k("session", id)); removeIndex("session", id); }
+                          }
+                      }
+                  } catch (Exception e) { throw new IllegalStateException(e); }
+                  super.deleteAllSessions(name);
+              }
+
+              @Override public void storePreKey(int id, PreKeyRecord r) {
+                  super.storePreKey(id, r);
+                  try { put(k("prekey", Integer.toString(id)), r.serialize()); }
+                  catch (Exception e) { throw new IllegalStateException(e); }
+              }
+
+              @Override public PreKeyRecord loadPreKey(int id) throws InvalidKeyIdException {
+                  try {
+                      byte[] b = get(k("prekey", Integer.toString(id)));
+                      if (b != null) return new PreKeyRecord(b);
+                  } catch (Exception e) { throw new IllegalStateException(e); }
+                  return super.loadPreKey(id);
+              }
+
+              @Override public boolean containsPreKey(int id) {
+                  try { if (get(k("prekey", Integer.toString(id))) != null) return true; }
+                  catch (Exception e) { throw new IllegalStateException(e); }
+                  return super.containsPreKey(id);
+              }
+
+              @Override public void removePreKey(int id) {
+                  super.removePreKey(id); remove(k("prekey", Integer.toString(id)));
+              }
+
+              @Override public void storeSignedPreKey(int id, SignedPreKeyRecord r) {
+                  super.storeSignedPreKey(id, r);
+                  try { put(k("signed", Integer.toString(id)), r.serialize()); addIndex("signed", Integer.toString(id)); }
+                  catch (Exception e) { throw new IllegalStateException(e); }
+              }
+
+              @Override public SignedPreKeyRecord loadSignedPreKey(int id) throws InvalidKeyIdException {
+                  try {
+                      byte[] b = get(k("signed", Integer.toString(id)));
+                      if (b != null) return new SignedPreKeyRecord(b);
+                  } catch (Exception e) { throw new IllegalStateException(e); }
+                  return super.loadSignedPreKey(id);
+              }
+
+              @Override public List<SignedPreKeyRecord> loadSignedPreKeys() {
+                  try {
+                      List<SignedPreKeyRecord> out = new ArrayList<>();
+                      for (String id : index("signed")) {
+                          byte[] b = get(k("signed", id));
+                          if (b != null) out.add(new SignedPreKeyRecord(b));
+                      }
+                      return out;
+                  } catch (Exception e) { throw new IllegalStateException(e); }
+              }
+
+              @Override public boolean containsSignedPreKey(int id) {
+                  try { return get(k("signed", Integer.toString(id))) != null; }
+                  catch (Exception e) { throw new IllegalStateException(e); }
+              }
+
+              @Override public void removeSignedPreKey(int id) {
+                  super.removeSignedPreKey(id);
+                  try { remove(k("signed", Integer.toString(id))); removeIndex("signed", Integer.toString(id)); }
+                  catch (Exception e) { throw new IllegalStateException(e); }
+              }
+
+              @Override public void storeKyberPreKey(int id, KyberPreKeyRecord r) {
+                  super.storeKyberPreKey(id, r);
+                  try { put(k("kyber", Integer.toString(id)), r.serialize()); addIndex("kyber", Integer.toString(id)); }
+                  catch (Exception e) { throw new IllegalStateException(e); }
+              }
+
+              @Override public KyberPreKeyRecord loadKyberPreKey(int id) throws InvalidKeyIdException {
+                  try {
+                      byte[] b = get(k("kyber", Integer.toString(id)));
+                      if (b != null) return new KyberPreKeyRecord(b);
+                  } catch (Exception e) { throw new IllegalStateException(e); }
+                  return super.loadKyberPreKey(id);
+              }
+
+              @Override public List<KyberPreKeyRecord> loadKyberPreKeys() {
+                  try {
+                      List<KyberPreKeyRecord> out = new ArrayList<>();
+                      for (String id : index("kyber")) {
+                          byte[] b = get(k("kyber", id));
+                          if (b != null) out.add(new KyberPreKeyRecord(b));
+                      }
+                      return out;
+                  } catch (Exception e) { throw new IllegalStateException(e); }
+              }
+
+              @Override public boolean containsKyberPreKey(int id) {
+                  try { return get(k("kyber", Integer.toString(id))) != null; }
+                  catch (Exception e) { throw new IllegalStateException(e); }
+              }
+
+              @Override public void removeKyberPreKey(int id) {
+                  super.removeKyberPreKey(id);
+                  try { remove(k("kyber", Integer.toString(id))); removeIndex("kyber", Integer.toString(id)); }
+                  catch (Exception e) { throw new IllegalStateException(e); }
+              }
+
+              @Override public void storeSenderKey(SignalProtocolAddress a, UUID distributionId, SenderKeyRecord r) {
+                  super.storeSenderKey(a, distributionId, r);
+                  try { put(k("sender", addressId(a) + "_" + distributionId), r.serialize()); }
+                  catch (Exception e) { throw new IllegalStateException(e); }
+              }
+
+              @Override public SenderKeyRecord loadSenderKey(SignalProtocolAddress a, UUID distributionId) {
+                  try {
+                      byte[] b = get(k("sender", addressId(a) + "_" + distributionId));
+                      if (b != null) return new SenderKeyRecord(b);
+                  } catch (Exception e) { throw new IllegalStateException(e); }
+                  return super.loadSenderKey(a, distributionId);
+              }
+
+              @Override public void markKyberPreKeyUsed(int id, int signedId, ECPublicKey baseKey)
+                      throws ReusedBaseKeyException {
+                  String marker = k("kyber-used", id + "/" + signedId + "/" +
+                          Base64.encodeToString(baseKey.serialize(), Base64.NO_WRAP));
+                  try {
+                      if (get(marker) != null) throw new ReusedBaseKeyException("Kyber pre-key reuse detected");
+                      super.markKyberPreKeyUsed(id, signedId, baseKey);
+                      put(marker, new byte[]{1});
+                  } catch (ReusedBaseKeyException e) { throw e; }
+                    catch (Exception e) { throw new IllegalStateException("Kyber replay-state write failed", e); }
+              }
+
+              public void clearNamespace() {
+                  try {
+                      for (String type : new String[]{"session","signed","kyber"}) {
+                          for (String id : index(type)) remove(k(type,id));
+                          remove(k("index",type));
+                      }
+                  } catch (Exception e) { throw new IllegalStateException(e); }
+              }
+          }
+          EOF
+
           cat > app/src/main/java/com/nexus/app/E2eeSessionEngine.java <<'EOF'
           package com.nexus.app;
 
-                    import org.signal.libsignal.protocol.IdentityKey;
-          import org.signal.libsignal.protocol.message.CiphertextMessage;
-          import org.signal.libsignal.protocol.message.PreKeySignalMessage;
-          import org.signal.libsignal.protocol.message.SignalMessage;
+          import android.content.Context;
+          import org.signal.libsignal.protocol.IdentityKey;
           import org.signal.libsignal.protocol.IdentityKeyPair;
           import org.signal.libsignal.protocol.SessionBuilder;
           import org.signal.libsignal.protocol.SessionCipher;
           import org.signal.libsignal.protocol.SignalProtocolAddress;
+          import org.signal.libsignal.protocol.message.CiphertextMessage;
+          import org.signal.libsignal.protocol.message.PreKeySignalMessage;
+          import org.signal.libsignal.protocol.message.SignalMessage;
           import org.signal.libsignal.protocol.ecc.ECKeyPair;
           import org.signal.libsignal.protocol.kem.KEMKeyPair;
           import org.signal.libsignal.protocol.kem.KEMKeyType;
-          import org.signal.libsignal.protocol.state.impl.InMemorySignalProtocolStore;
           import org.signal.libsignal.protocol.state.KyberPreKeyRecord;
           import org.signal.libsignal.protocol.state.PreKeyBundle;
           import org.signal.libsignal.protocol.state.PreKeyRecord;
@@ -219,76 +495,66 @@ jobs:
               private static final SignalProtocolAddress BOB = new SignalProtocolAddress("NX-LOCAL-BOB", 1);
               private E2eeSessionEngine() {}
 
-              public static String runLocalRoundTrip() throws Exception {
-                  Device alice = new Device();
-                  Device bob = new Device();
-                  PreKeyBundle bobBundle = createBundle(bob);
-                  new SessionBuilder(alice.store, BOB, ALICE).process(bobBundle);
-                  SessionCipher aliceCipher = new SessionCipher(alice.store, ALICE, BOB);
-                  SessionCipher bobCipher = new SessionCipher(bob.store, BOB, ALICE);
+              public static String runPersistentRoundTrip(Context context) throws Exception {
+                  PersistentSignalProtocolStore alice = new PersistentSignalProtocolStore(context, "smoke-alice");
+                  PersistentSignalProtocolStore bob = new PersistentSignalProtocolStore(context, "smoke-bob");
+                  alice.clearNamespace(); bob.clearNamespace();
 
-                  byte[] first = "NEXUS E2EE".getBytes(StandardCharsets.UTF_8);
-                  var encrypted = aliceCipher.encrypt(first);
-                  byte[] decryptedFirst;
-                  if (encrypted.getType() == CiphertextMessage.PREKEY_TYPE) {
-                      decryptedFirst = bobCipher.decrypt(new PreKeySignalMessage(encrypted.serialize()));
-                  } else if (encrypted.getType() == CiphertextMessage.WHISPER_TYPE) {
-                      decryptedFirst = bobCipher.decrypt(new SignalMessage(encrypted.serialize()));
-                  } else {
-                      throw new IllegalStateException("Unknown ciphertext type: " + encrypted.getType());
-                  }
-                  if (!java.util.Arrays.equals(first, decryptedFirst)) {
-                      throw new IllegalStateException("E2EE round-trip failed");
-                  }
+                  createBundle(bob);
+                  new SessionBuilder(alice, BOB, ALICE).process(createBundle(bob));
+                  SessionCipher a = new SessionCipher(alice, ALICE, BOB);
+                  SessionCipher b = new SessionCipher(bob, BOB, ALICE);
 
-                  byte[] reply = "OK".getBytes(StandardCharsets.UTF_8);
-                  var encryptedReply = bobCipher.encrypt(reply);
-                  byte[] decryptedReply;
-                  if (encryptedReply.getType() == CiphertextMessage.PREKEY_TYPE) {
-                      decryptedReply = aliceCipher.decrypt(new PreKeySignalMessage(encryptedReply.serialize()));
-                  } else if (encryptedReply.getType() == CiphertextMessage.WHISPER_TYPE) {
-                      decryptedReply = aliceCipher.decrypt(new SignalMessage(encryptedReply.serialize()));
-                  } else {
-                      throw new IllegalStateException("Unknown reply ciphertext type: " + encryptedReply.getType());
-                  }
-                  if (!java.util.Arrays.equals(reply, decryptedReply)) {
-                      throw new IllegalStateException("E2EE reply failed");
-                  }
-                  return "REAL E2EE SESSION ACTIVE\nAlice ↔ Bob\nSignal session + ratchet OK";
+                  byte[] first = "NEXUS PERSISTENT E2EE".getBytes(StandardCharsets.UTF_8);
+                  byte[] clear = decrypt(b, a.encrypt(first));
+                  if (!java.util.Arrays.equals(first, clear)) throw new IllegalStateException("First E2EE message failed");
+
+                  // Simulate process death: construct fresh store objects from the same encrypted state.
+                  alice = new PersistentSignalProtocolStore(context, "smoke-alice");
+                  bob = new PersistentSignalProtocolStore(context, "smoke-bob");
+                  a = new SessionCipher(alice, ALICE, BOB);
+                  b = new SessionCipher(bob, BOB, ALICE);
+
+                  byte[] second = "SESSION SURVIVED RESTART".getBytes(StandardCharsets.UTF_8);
+                  clear = decrypt(b, a.encrypt(second));
+                  if (!java.util.Arrays.equals(second, clear)) throw new IllegalStateException("Persistent session failed");
+
+                  return "PERSISTENT E2EE ACTIVE\nSession survived store reload\nKeystore AES-256-GCM + libsignal ratchet OK";
               }
 
-              private static final class Device {
-                  final IdentityKeyPair identity;
-                  final InMemorySignalProtocolStore store;
-                  Device() {
-                      ECKeyPair keys = ECKeyPair.generate();
-                      identity = new IdentityKeyPair(new IdentityKey(keys.getPublicKey()), keys.getPrivateKey());
-                      store = new InMemorySignalProtocolStore(identity, KeyHelper.generateRegistrationId(false));
-                  }
+              private static byte[] decrypt(SessionCipher receiver, CiphertextMessage encrypted) throws Exception {
+                  if (encrypted.getType() == CiphertextMessage.PREKEY_TYPE)
+                      return receiver.decrypt(new PreKeySignalMessage(encrypted.serialize()));
+                  if (encrypted.getType() == CiphertextMessage.WHISPER_TYPE)
+                      return receiver.decrypt(new SignalMessage(encrypted.serialize()));
+                  throw new IllegalStateException("Unknown ciphertext type: " + encrypted.getType());
               }
 
-              private static PreKeyBundle createBundle(Device device) throws Exception {
+              private static PreKeyBundle createBundle(PersistentSignalProtocolStore device) throws Exception {
+                  // Reuse the existing active pre-key set when possible.
                   ECKeyPair preKey = ECKeyPair.generate();
                   ECKeyPair signedPreKey = ECKeyPair.generate();
-                  byte[] signedSignature = device.identity.getPrivateKey().calculateSignature(signedPreKey.getPublicKey().serialize());
+                  byte[] signedSignature = device.getIdentityKeyPair().getPrivateKey()
+                          .calculateSignature(signedPreKey.getPublicKey().serialize());
                   KEMKeyPair kyber = KEMKeyPair.generate(KEMKeyType.KYBER_1024);
-                  byte[] kyberSignature = device.identity.getPrivateKey().calculateSignature(kyber.getPublicKey().serialize());
+                  byte[] kyberSignature = device.getIdentityKeyPair().getPrivateKey()
+                          .calculateSignature(kyber.getPublicKey().serialize());
 
                   Random random = new Random();
                   int preKeyId = random.nextInt(Medium.MAX_VALUE);
                   int signedPreKeyId = random.nextInt(Medium.MAX_VALUE);
                   int kyberPreKeyId = random.nextInt(Medium.MAX_VALUE);
-                  device.store.storePreKey(preKeyId, new PreKeyRecord(preKeyId, preKey));
-                  device.store.storeSignedPreKey(signedPreKeyId, new SignedPreKeyRecord(signedPreKeyId, System.currentTimeMillis(), signedPreKey, signedSignature));
-                  device.store.storeKyberPreKey(kyberPreKeyId, new KyberPreKeyRecord(kyberPreKeyId, System.currentTimeMillis(), kyber, kyberSignature));
+                  device.storePreKey(preKeyId, new PreKeyRecord(preKeyId, preKey));
+                  device.storeSignedPreKey(signedPreKeyId, new SignedPreKeyRecord(signedPreKeyId, System.currentTimeMillis(), signedPreKey, signedSignature));
+                  device.storeKyberPreKey(kyberPreKeyId, new KyberPreKeyRecord(kyberPreKeyId, System.currentTimeMillis(), kyber, kyberSignature));
 
-                  return new PreKeyBundle(device.store.getLocalRegistrationId(), 1, preKeyId, preKey.getPublicKey(),
-                      signedPreKeyId, signedPreKey.getPublicKey(), signedSignature, device.identity.getPublicKey(),
-                      kyberPreKeyId, kyber.getPublicKey(), kyberSignature);
+                  return new PreKeyBundle(device.getLocalRegistrationId(), 1, preKeyId, preKey.getPublicKey(),
+                          signedPreKeyId, signedPreKey.getPublicKey(), signedSignature,
+                          device.getIdentityKeyPair().getPublicKey(), kyberPreKeyId,
+                          kyber.getPublicKey(), kyberSignature);
               }
           }
           EOF
-
           cat > app/src/main/java/com/nexus/app/MainActivity.java <<'EOF'
           package com.nexus.app;
 
@@ -315,7 +581,7 @@ jobs:
 
                   String e2eeStatus;
                   try {
-                      e2eeStatus = E2eeSessionEngine.runLocalRoundTrip();
+                      e2eeStatus = E2eeSessionEngine.runPersistentRoundTrip(this);
                   } catch (Exception e) {
                       e2eeStatus = "E2EE TEST FAILED\n" + e.getClass().getSimpleName() + ": " + e.getMessage();
                   }
