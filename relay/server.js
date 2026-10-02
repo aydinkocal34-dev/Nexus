@@ -103,11 +103,37 @@ wss.on("connection", (ws) => {
         id: msg.id,
         from: ws.peerId,
         ciphertext: msg.ciphertext,
-        expiresAt: Date.now() + TTL_MS
+        ciphertextType: Number.isInteger(msg.ciphertextType) ? msg.ciphertextType : 0,
+        expiresAt: Date.now() + Math.min(TTL_MS, Math.max(1000, Number(msg.ttlMs) || TTL_MS))
       };
 
       // Blind relay: packet.ciphertext is opaque and is never parsed or logged.
       send(recipient, packet);
+      send(ws, { type: "delivery", id: msg.id, status: "sent" });
+      return;
+    }
+
+    if (msg.type === "prekey") {
+      if (!ws.peerId || typeof msg.to !== "string" || typeof msg.id !== "string" ||
+          typeof msg.bundle !== "string") {
+        send(ws, { type: "error", code: "BAD_PREKEY" });
+        return;
+      }
+
+      const recipient = peers.get(msg.to);
+      if (!recipient) {
+        send(ws, { type: "delivery", id: msg.id, status: "offline" });
+        return;
+      }
+
+      // Public Signal pre-key material is forwarded as an opaque envelope.
+      send(recipient, {
+        type: "prekey",
+        id: msg.id,
+        from: ws.peerId,
+        bundle: msg.bundle,
+        expiresAt: Date.now() + Math.min(TTL_MS, Math.max(1000, Number(msg.ttlMs) || TTL_MS))
+      });
       send(ws, { type: "delivery", id: msg.id, status: "sent" });
       return;
     }
