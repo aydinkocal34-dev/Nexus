@@ -789,7 +789,7 @@ jobs:
                           signedPreKeyId,
                           new org.signal.libsignal.protocol.ecc.ECPublicKey(signedPreKeyPublic),
                           signedPreKeySignature,
-                          new IdentityKey(identityKey),
+                          new IdentityKey(identityKey, 0),
                           kyberPreKeyId,
                           new org.signal.libsignal.protocol.kem.KEMPublicKey(kyberPreKeyPublic),
                           kyberPreKeySignature);
