@@ -21,3 +21,6 @@ PORT=8080 npm start
 ```
 
 Production deployment must put the WebSocket endpoint behind TLS (wss://), authentication, durable abuse controls, monitoring, and an independently reviewed protocol implementation.
+
+
+CI note: relay tests run automatically on changes under `relay/` or this workflow.
