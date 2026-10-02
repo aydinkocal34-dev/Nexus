@@ -791,7 +791,7 @@ jobs:
                           signedPreKeySignature,
                           new IdentityKey(identityKey),
                           kyberPreKeyId,
-                          new org.signal.libsignal.protocol.kem.KEMPublicKey(identityKey.length == -1 ? new byte[0] : kyberPreKeyPublic),
+                          new org.signal.libsignal.protocol.kem.KEMPublicKey(kyberPreKeyPublic),
                           kyberPreKeySignature);
               }
           }
