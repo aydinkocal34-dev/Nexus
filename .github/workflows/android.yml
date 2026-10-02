@@ -423,8 +423,7 @@ jobs:
                   catch (Exception e) { throw new IllegalStateException(e); }
               }
 
-              @Override public void removeKyberPreKey(int id) {
-                  super.removeKyberPreKey(id);
+              public void removeKyberPreKey(int id) {
                   try { remove(k("kyber", Integer.toString(id))); removeIndex("kyber", Integer.toString(id)); }
                   catch (Exception e) { throw new IllegalStateException(e); }
               }
