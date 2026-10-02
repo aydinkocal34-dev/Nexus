@@ -35,7 +35,7 @@ function health(req, res) {
   const body = JSON.stringify({
     ok: true,
     service: "nexus-blind-relay",
-    protocol: 1,
+    protocol: 2,
     peers: peers.size,
     timestamp: Date.now()
   });
@@ -137,6 +137,25 @@ wss.on("connection", (ws) => {
       deliveries.set(msg.id, { sender: ws.peerId, recipient: msg.to, expiresAt: packet.expiresAt });
       send(recipient, packet);
       send(ws, { type: "delivery", id: msg.id, status: "sent" });
+      return;
+    }
+
+    if (msg.type === "prekey-request") {
+      if (!ws.peerId || typeof msg.to !== "string" || msg.to.length < 8 || msg.to.length > 128) {
+        send(ws, { type: "error", code: "BAD_PREKEY_REQUEST" });
+        return;
+      }
+      const recipient = peers.get(msg.to);
+      if (!recipient) {
+        send(ws, { type: "delivery", id: msg.id || token(), status: "offline" });
+        return;
+      }
+      send(recipient, {
+        type: "prekey-request",
+        id: typeof msg.id === "string" ? msg.id : token(),
+        from: ws.peerId,
+        expiresAt: Date.now() + Math.min(TTL_MS, 60_000)
+      });
       return;
     }
 
