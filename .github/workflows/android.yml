@@ -115,8 +115,8 @@ jobs:
                   minSdk 26
                   targetSdk 35
 
-                  versionCode 21
-                  versionName '0.16.1-e2ee-engine'
+                  versionCode 22
+                  versionName '0.16.2-e2ee-engine'
               }
 
               compileOptions {
@@ -313,6 +313,13 @@ jobs:
                   view.setPadding(40, 80, 40, 40);
                   view.setTextSize(18);
 
+                  String e2eeStatus;
+                  try {
+                      e2eeStatus = E2eeSessionEngine.runLocalRoundTrip();
+                  } catch (Exception e) {
+                      e2eeStatus = "E2EE TEST FAILED\n" + e.getClass().getSimpleName() + ": " + e.getMessage();
+                  }
+
                   view.setText(
                       "NEXUS\n\n" +
                       "0.15.0 REAL E2EE SESSION\n\n" +
@@ -321,7 +328,7 @@ jobs:
                       "✓ Android Keystore altyapısı\n" +
                       "✓ FLAG_SECURE\n\n" +
                       "Gerçek libsignal E2EE motoru uygulamaya bağlandı.\n\n" +
-                      E2eeSessionEngine.runLocalRoundTrip()
+                      e2eeStatus
                   );
 
                   setContentView(view);
