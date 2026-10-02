@@ -174,7 +174,7 @@ setInterval(() => {
   for (const [id, delivery] of deliveries) {
     if (delivery.expiresAt <= now) deliveries.delete(id);
   }
-}, Math.max(1000, TTL_MS)).unref();
+  for (const [id, expiresAt] of seenIds) {\n    if (expiresAt <= now) seenIds.delete(id);\n  }\n}, Math.max(1000, TTL_MS)).unref();
 
 httpServer.listen(PORT, "0.0.0.0", () => {
   console.log("NEXUS blind relay listening on " + PORT);
