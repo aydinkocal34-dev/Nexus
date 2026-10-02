@@ -96,7 +96,7 @@ test("relay forwards opaque ciphertext and does not require plaintext", async ()
   assert.equal(received.type, "ciphertext");
   assert.equal(received.ciphertext, opaque);
   assert.equal(received.ciphertextType, 3);
-  assert.equal(received.id, "msg-001");
+  assert.equal(received.id, "msg-0001");
   assert.equal(typeof received.expiresAt, "number");
 
   alice.close();
@@ -130,7 +130,7 @@ test("relay forwards opaque prekey envelopes without parsing them", async () => 
   const received = await nextMessage(bob);
   assert.equal(received.type, "prekey");
   assert.equal(received.bundle, bundle);
-  assert.equal(received.id, "bundle-001");
+  assert.equal(received.id, "bundle-0001");
   assert.equal(typeof received.expiresAt, "number");
 
   alice.close();
@@ -158,11 +158,11 @@ test("read receipt is bound to the delivered recipient and message id cannot be 
   const received = await nextMessage(bob);
   assert.equal(received.type, "ciphertext");
 
-  mallory.send(JSON.stringify({type:"ack", id:"msg-ack-001", to:"alice-ack-001"}));
+  mallory.send(JSON.stringify({type:"ack", id:"msg-ack-0001", to:"alice-ack-001"}));
   const badAck = await nextMessage(mallory);
   assert.equal(badAck.code, "BAD_ACK");
 
-  bob.send(JSON.stringify({type:"ack", id:"msg-ack-001"}));
+  bob.send(JSON.stringify({type:"ack", id:"msg-ack-0001"}));
   const read = await nextMessage(alice);
   assert.equal(read.status, "read");
 
