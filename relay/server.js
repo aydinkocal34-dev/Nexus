@@ -9,6 +9,7 @@ const RATE_LIMIT = Number(process.env.RATE_LIMIT_PER_MINUTE || 120);
 
 const peers = new Map();
 const buckets = new Map();
+const deliveries = new Map();
 
 function token() {
   return crypto.randomBytes(16).toString("hex");
@@ -92,6 +93,11 @@ wss.on("connection", (ws) => {
         return;
       }
 
+      if (msg.id.length < 8 || msg.id.length > 128 || msg.ciphertext.length > MAX_FRAME) {
+        send(ws, { type: "error", code: "BAD_RELAY" });
+        return;
+      }
+
       const recipient = peers.get(msg.to);
       if (!recipient) {
         send(ws, { type: "delivery", id: msg.id, status: "offline" });
@@ -108,6 +114,11 @@ wss.on("connection", (ws) => {
       };
 
       // Blind relay: packet.ciphertext is opaque and is never parsed or logged.
+      if (deliveries.has(msg.id)) {
+        send(ws, { type: "error", code: "REPLAY_ID" });
+        return;
+      }
+      deliveries.set(msg.id, { sender: ws.peerId, recipient: msg.to, expiresAt: packet.expiresAt });
       send(recipient, packet);
       send(ws, { type: "delivery", id: msg.id, status: "sent" });
       return;
@@ -140,12 +151,14 @@ wss.on("connection", (ws) => {
 
     if (msg.type === "ack") {
       if (!ws.peerId || typeof msg.id !== "string") return;
-      const recipient = peers.get(msg.to);
-      if (recipient) send(recipient, {
-        type: "delivery",
-        id: msg.id,
-        status: "read"
-      });
+      const delivery = deliveries.get(msg.id);
+      if (!delivery || delivery.recipient !== ws.peerId || delivery.expiresAt < Date.now()) {
+        send(ws, { type: "error", code: "BAD_ACK" });
+        return;
+      }
+      const sender = peers.get(delivery.sender);
+      if (sender) send(sender, { type: "delivery", id: msg.id, status: "read" });
+      deliveries.delete(msg.id);
     }
   });
 
@@ -156,7 +169,10 @@ wss.on("connection", (ws) => {
 });
 
 setInterval(() => {
-  // No message queue is retained: undelivered ciphertext is discarded.
+  const now = Date.now();
+  for (const [id, delivery] of deliveries) {
+    if (delivery.expiresAt <= now) deliveries.delete(id);
+  }
 }, Math.max(1000, TTL_MS)).unref();
 
 httpServer.listen(PORT, "0.0.0.0", () => {
