@@ -81,9 +81,23 @@ wss.on("connection", (ws) => {
         send(ws, { type: "error", code: "BAD_PEER_ID" });
         return;
       }
+
+      // A peer may not silently replace an existing authenticated connection.
+      const existing = peers.get(msg.peerId);
+      if (existing && existing !== ws) {
+        send(ws, { type: "error", code: "PEER_ALREADY_CONNECTED" });
+        ws.close(1008, "peer already connected");
+        return;
+      }
+
       ws.peerId = msg.peerId;
       peers.set(msg.peerId, ws);
-      send(ws, { type: "registered", peerId: msg.peerId });
+      send(ws, {
+        type: "registered",
+        peerId: msg.peerId,
+        protocol: 2,
+        relayTtlMs: Math.min(TTL_MS, 60_000)
+      });
       return;
     }
 
