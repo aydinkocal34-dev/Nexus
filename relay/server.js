@@ -115,7 +115,7 @@ wss.on("connection", (ws) => {
       };
 
       // Blind relay: packet.ciphertext is opaque and is never parsed or logged.
-      if (deliveries.has(msg.id)) {
+      if (seenIds.has(msg.id) || deliveries.has(msg.id)) {
         send(ws, { type: "error", code: "REPLAY_ID" });
         return;
       }
