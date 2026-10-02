@@ -578,7 +578,8 @@ jobs:
           public final class RelayClient {
               public interface Listener {
                   void onConnected();
-                  void onCiphertext(String id, String from, byte[] ciphertext, long expiresAt);
+                  void onPreKey(String id, String from, String bundle, long expiresAt);
+                  void onCiphertext(String id, String from, byte[] ciphertext, int ciphertextType, long expiresAt);
                   void onDelivery(String id, String status);
                   void onError(String message);
                   void onClosed();
@@ -619,7 +620,13 @@ jobs:
                                   String from = msg.getString("from");
                                   byte[] ciphertext = Base64.getDecoder().decode(msg.getString("ciphertext"));
                                   long expiresAt = msg.getLong("expiresAt");
-                                  main.post(() -> listener.onCiphertext(id, from, ciphertext, expiresAt));
+                                  main.post(() -> listener.onCiphertext(id, from, ciphertext, msg.optInt("ciphertextType", 0), expiresAt));
+                              } else if ("prekey".equals(type)) {
+                                  String id = msg.getString("id");
+                                  String from = msg.getString("from");
+                                  String bundle = msg.getString("bundle");
+                                  long expiresAt = msg.getLong("expiresAt");
+                                  main.post(() -> listener.onPreKey(id, from, bundle, expiresAt));
                               } else if ("delivery".equals(type)) {
                                   String id = msg.getString("id");
                                   String status = msg.getString("status");
@@ -654,6 +661,22 @@ jobs:
                       return socket.send(msg.toString());
                   } catch (Exception e) {
                       main.post(() -> listener.onError("Could not encode relay frame"));
+                      return false;
+                  }
+              }
+
+              public boolean sendPreKey(String id, String toPeerId, String bundle, long ttlMs) {
+                  if (socket == null) return false;
+                  try {
+                      JSONObject msg = new JSONObject();
+                      msg.put("type", "prekey");
+                      msg.put("id", id);
+                      msg.put("to", toPeerId);
+                      msg.put("bundle", bundle);
+                      msg.put("ttlMs", Math.max(1000L, ttlMs));
+                      return socket.send(msg.toString());
+                  } catch (Exception e) {
+                      main.post(() -> listener.onError("Could not encode prekey frame"));
                       return false;
                   }
               }
@@ -835,6 +858,7 @@ jobs:
               @Test
               public void relayClientExposesCiphertextOnlyTransport() throws Exception {
                   assertNotNull(RelayClient.class.getMethod("sendCiphertext", String.class, String.class, byte[].class, long.class));
+                  assertNotNull(RelayClient.class.getMethod("sendPreKey", String.class, String.class, String.class, long.class));
                   assertNotNull(RelayClient.class.getMethod("sendReadReceipt", String.class, String.class));
               }
           }
