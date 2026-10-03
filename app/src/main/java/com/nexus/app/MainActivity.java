@@ -12,13 +12,13 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
-import android.os.Handler;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -36,7 +36,7 @@ public class MainActivity extends Activity implements RealE2eeTransport.Listener
     private String relayWss="wss://nexus-blind-relay.onrender.com";
     private TextView connectionStatus;
     private RealE2eeTransport transport;
-    private final Handler handler=new Handler();
+    private final android.os.Handler handler=new android.os.Handler();
     private static final String PREFS="nexus_runtime";
     private static final String CHANNEL="nexus_messages";
 
@@ -71,8 +71,7 @@ public class MainActivity extends Activity implements RealE2eeTransport.Listener
         }
         relayWss=p.getString("relayWss","wss://nexus-blind-relay.onrender.com");
         createNotificationChannel();
-        try { transport=new RealE2eeTransport(this,localPeerId,1,this); }
-        catch(Exception ignored) {}
+        try { transport=new RealE2eeTransport(this,localPeerId,1,this); } catch(Exception ignored) {}
         if(!relayWss.isEmpty() && transport!=null) transport.connect(relayWss);
         showHome();
     }
@@ -106,10 +105,25 @@ public class MainActivity extends Activity implements RealE2eeTransport.Listener
     }
     private void showHome(){
         base("NEXUS");
-        LinearLayout hero=new LinearLayout(this); hero.setOrientation(LinearLayout.VERTICAL); hero.setGravity(Gravity.CENTER); hero.setPadding(0,dp(18),0,dp(18));
-        TextView logo=text("N",68,Color.rgb(42,185,255),true); logo.setGravity(Gravity.CENTER); hero.addView(logo,new LinearLayout.LayoutParams(-1,dp(82)));
-        TextView h=text("Güvenli İletişim",17,TEXT,true); h.setGravity(Gravity.CENTER); hero.addView(h);
-        TextView hs=text(localPeerId,12,MUTED,false); hs.setGravity(Gravity.CENTER); hero.addView(hs);
+
+        LinearLayout hero=new LinearLayout(this);
+        hero.setOrientation(LinearLayout.VERTICAL);
+        hero.setGravity(Gravity.CENTER);
+        hero.setPadding(0,dp(12),0,dp(10));
+
+        ImageView logo=new ImageView(this);
+        logo.setImageResource(com.nexus.app.R.drawable.nexus_logo);
+        logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        hero.addView(logo,new LinearLayout.LayoutParams(-1,dp(112)));
+
+        TextView tagline=text("Güvenli İletişim\nGüvenli Gelecek",16,TEXT,true);
+        tagline.setGravity(Gravity.CENTER);
+        hero.addView(tagline);
+
+        TextView hs=text(localPeerId,12,MUTED,false);
+        hs.setGravity(Gravity.CENTER);
+        hero.addView(hs);
+
         add(hero,14);
 
         LinearLayout grid=new LinearLayout(this); grid.setOrientation(LinearLayout.VERTICAL);
@@ -120,14 +134,20 @@ public class MainActivity extends Activity implements RealE2eeTransport.Listener
         grid.addView(r1); add(grid,10);
         chat.setOnClickListener(v->showChat(activePeer.isEmpty()?"Yeni sohbet":activePeer));
         people.setOnClickListener(v->showNewChat());
+
         LinearLayout r2=new LinearLayout(this); r2.setWeightSum(2);
         r2.addView(iconText("◇","Gizlilik","Tam şifreleme"),new LinearLayout.LayoutParams(0,dp(92),1));
-        View settings=iconText("⚙","Ayarlar","Relay bağlantısı");
+        View settings=iconText("⚙","Ayarlar","Uygulama ayarları");
         r2.addView(settings,new LinearLayout.LayoutParams(0,dp(92),1));
         settings.setOnClickListener(v->showSettings());
         grid.addView(r2); add(grid,12);
+
         card(iconText("▣","Verileriniz güvende","Uçtan uca şifreleme ile sadece sizin kontrolünüzde."));
-        Button b=button("+  Yeni güvenli sohbet"); b.setOnClickListener(v->showNewChat()); add(b,12);
+
+        Button b=button("+  Yeni güvenli sohbet");
+        b.setOnClickListener(v->showNewChat());
+        add(b,12);
+
         sectionTitle("Sohbetler");
         card(text(messages.isEmpty()?"Henüz sohbet yok\nBir NEXUS ID ekleyerek başlayın.":activePeer+"\nSon mesaj: şifreli",14,MUTED,false));
         nav();
@@ -158,85 +178,56 @@ public class MainActivity extends Activity implements RealE2eeTransport.Listener
         base("Ayarlar");
         card(text("NEXUS ID\n"+localPeerId,14,TEXT,false));
         sectionTitle("WSS Relay");
-        EditText url=new EditText(this);
-        url.setHint("wss://sunucu-adresi");
-        url.setHintTextColor(Color.rgb(100,125,150));
-        url.setTextColor(TEXT);
-        url.setSingleLine(true);
-        url.setText(relayWss);
-        url.setBackground(bg(Color.rgb(7,20,35),18));
-        add(url,12);
+        EditText url=new EditText(this); url.setHint("wss://sunucu-adresi"); url.setHintTextColor(Color.rgb(100,125,150)); url.setTextColor(TEXT);
+        url.setSingleLine(true); url.setText(relayWss); url.setBackground(bg(Color.rgb(7,20,35),18)); add(url,12);
         Button save=button("WSS Relay'e Bağlan");
-        save.setOnClickListener(v->{
-            String value=url.getText().toString().trim();
-            if(!value.startsWith("wss://")){url.setError("wss:// adresi gerekli");return;}
-            relayWss=value;
+        save.setOnClickListener(v->{String value=url.getText().toString().trim();if(!value.startsWith("wss://")){url.setError("wss:// adresi gerekli");return;}relayWss=value;
             getSharedPreferences(PREFS,MODE_PRIVATE).edit().putString("relayWss",value).apply();
-            if(transport!=null) transport.connect(value);
-            showHome();
-        });
+            if(transport!=null) transport.connect(value); showHome();});
         add(save,12);
         card(text("Bildirimler yalnızca “Yeni mesajınız var” bilgisini gösterir; mesaj metni bildirimde yer almaz.",13,MUTED,false));
     }
-
     private void createNotificationChannel(){
         NotificationManager nm=getSystemService(NotificationManager.class);
         if(nm!=null) nm.createNotificationChannel(new NotificationChannel(CHANNEL,"NEXUS Mesajları",NotificationManager.IMPORTANCE_HIGH));
     }
-
     private void notifyNewMessage(String from){
         if(android.os.Build.VERSION.SDK_INT>=33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED){
-            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},42);
-            return;
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},42); return;
         }
         NotificationCompat.Builder n=new NotificationCompat.Builder(this,CHANNEL)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("🔒 NEXUS")
-            .setContentText("Yeni mesajınız var")
-            .setSubText("Gönderen: "+from)
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_HIGH);
+            .setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle("🔒 NEXUS").setContentText("Yeni mesajınız var")
+            .setSubText("Gönderen: "+from).setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_HIGH);
         NotificationManagerCompat.from(this).notify(Math.abs(from.hashCode()),n.build());
     }
-
-    @Override public void onReady(){
-        runOnUiThread(()->{ if(connectionStatus!=null) connectionStatus.setText("● GÜVENLİ BAĞLI"); });
-    }
-
+    @Override public void onReady(){runOnUiThread(()->{if(connectionStatus!=null)connectionStatus.setText("● GÜVENLİ BAĞLI");});}
     @Override public void onMessage(String from,String message,String id){
-        messages.add(message);
-        notifyNewMessage(from);
-        if(from.equals(activePeer)) showChat(from);
-        handler.postDelayed(()->{
-            messages.remove(message);
-            if(from.equals(activePeer)) showChat(from);
-        },60000L);
+        messages.add(message); notifyNewMessage(from); if(from.equals(activePeer))showChat(from);
+        handler.postDelayed(()->{messages.remove(message);if(from.equals(activePeer))showChat(from);},60000L);
     }
-
     @Override public void onDelivery(String id,String status){}
-
     @Override public void onError(String message){
-        runOnUiThread(()->{
-            if(connectionStatus!=null) connectionStatus.setText("● BAĞLANTI HATASI");
-            android.widget.Toast.makeText(this,message,android.widget.Toast.LENGTH_LONG).show();
-        });
+        runOnUiThread(()->{if(connectionStatus!=null)connectionStatus.setText("● BAĞLANTI HATASI");
+            android.widget.Toast.makeText(this,message,android.widget.Toast.LENGTH_LONG).show();});
     }
-
     private void showChat(String peer){
         activePeer=peer; base(peer);
-        for(String m:messages){LinearLayout row=new LinearLayout(this); row.setGravity(Gravity.RIGHT); TextView bubble=text(m,15,TEXT,false); bubble.setPadding(dp(14),dp(10),dp(14),dp(10)); bubble.setBackground(bg(BLUE,18)); row.addView(bubble,new LinearLayout.LayoutParams(-2,-2)); add(row,8);}
-        if(messages.isEmpty()){TextView empty=text("🔒  Uçtan uca şifreli\nMesajlar yalnızca iki cihazda okunabilir.",14,MUTED,false); empty.setGravity(Gravity.CENTER); add(empty,12);}
+        for(String m:messages){
+            LinearLayout row=new LinearLayout(this); row.setGravity(Gravity.RIGHT);
+            TextView bubble=text(m,15,TEXT,false); bubble.setPadding(dp(14),dp(10),dp(14),dp(10)); bubble.setBackground(bg(BLUE,18));
+            row.addView(bubble,new LinearLayout.LayoutParams(-2,-2)); add(row,8);
+        }
+        if(messages.isEmpty()){
+            TextView empty=text("🔒  Uçtan uca şifreli\nMesajlar yalnızca iki cihazda okunabilir.",14,MUTED,false);
+            empty.setGravity(Gravity.CENTER); add(empty,12);
+        }
         LinearLayout composer=new LinearLayout(this); composer.setGravity(Gravity.CENTER_VERTICAL); composer.setPadding(dp(8),dp(6),dp(8),dp(6)); composer.setBackground(bg(CARD,24));
         EditText input=new EditText(this); input.setHint("Mesaj yaz..."); input.setHintTextColor(Color.rgb(100,125,150)); input.setTextColor(TEXT); input.setSingleLine(true);
         composer.addView(input,new LinearLayout.LayoutParams(0,dp(52),1));
         Button send=button("➤"); composer.addView(send,new LinearLayout.LayoutParams(dp(60),dp(52)));
         root.addView(composer,new LinearLayout.LayoutParams(-1,dp(64)));
-        send.setOnClickListener(v->{
-            String msg=input.getText().toString().trim();
-            if(msg.isEmpty())return;
-            if(transport==null || relayWss.isEmpty()){input.setError("Önce Ayarlar'dan WSS Relay bağla");return;}
-            transport.sendText(peer,1,msg);
-            messages.add(msg);input.setText("");showChat(peer);
-        });
+        send.setOnClickListener(v->{String msg=input.getText().toString().trim();if(msg.isEmpty())return;
+            if(transport==null||relayWss.isEmpty()){input.setError("Önce Ayarlar'dan WSS Relay bağla");return;}
+            transport.sendText(peer,1,msg); messages.add(msg);input.setText("");showChat(peer);});
     }
 }
