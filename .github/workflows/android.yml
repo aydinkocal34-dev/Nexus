@@ -28,7 +28,9 @@ jobs:
           "$SDK" \
             "platform-tools" \
             "platforms;android-35" \
-            "build-tools;35.0.0"
+            "build-tools;35.0.0" \
+            "emulator" \
+            "system-images;android-35;google_apis;x86_64"
 
       - name: Gradle
         run: |
@@ -119,6 +121,8 @@ jobs:
 
                   versionCode 29
                   versionName '0.22.0-live-chat'
+
+                  testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
               }
 
               compileOptions {
@@ -152,6 +156,8 @@ jobs:
                   'com.android.tools:desugar_jdk_libs:2.1.5'
 
               testImplementation 'junit:junit:4.13.2'
+              androidTestImplementation 'androidx.test:runner:1.6.2'
+              androidTestImplementation 'androidx.test.ext:junit:1.2.1'
           }
           EOF
 
@@ -1425,6 +1431,85 @@ jobs:
 
 
 
+          mkdir -p app/src/androidTest/java/com/nexus/app
+          cat > app/src/androidTest/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application>
+                  <uses-library android:name="android.test.runner" android:required="false"/>
+              </application>
+          </manifest>
+          EOF
+
+          cat > app/src/androidTest/java/com/nexus/app/LiveE2eeTransportInstrumentedTest.java <<'EOF'
+          package com.nexus.app;
+
+          import android.content.Context;
+          import androidx.test.ext.junit.runners.AndroidJUnit4;
+          import androidx.test.platform.app.InstrumentationRegistry;
+
+          import org.junit.Test;
+          import org.junit.runner.RunWith;
+
+          import java.util.concurrent.CountDownLatch;
+          import java.util.concurrent.TimeUnit;
+          import java.util.concurrent.atomic.AtomicReference;
+
+          import static org.junit.Assert.*;
+
+          @RunWith(AndroidJUnit4.class)
+          public class LiveE2eeTransportInstrumentedTest {
+              @Test
+              public void twoIndependentDevicesExchangeRealE2eeMessageThroughLiveRelay() throws Exception {
+                  Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+                  final String alice = "ci-alice-" + System.currentTimeMillis();
+                  final String bob = "ci-bob-" + System.currentTimeMillis();
+                  final String plaintext = "NEXUS-LIVE-E2EE-" + System.currentTimeMillis();
+
+                  CountDownLatch ready = new CountDownLatch(2);
+                  CountDownLatch received = new CountDownLatch(1);
+                  AtomicReference<String> clear = new AtomicReference<>();
+                  AtomicReference<String> error = new AtomicReference<>();
+
+                  RealE2eeTransport bobTransport = new RealE2eeTransport(
+                          context, bob, 1, new RealE2eeTransport.Listener() {
+                              @Override public void onReady() { ready.countDown(); }
+                              @Override public void onMessage(String from, String message, String id) {
+                                  clear.set(message);
+                                  received.countDown();
+                              }
+                              @Override public void onDelivery(String id, String status) {}
+                              @Override public void onError(String message) { error.compareAndSet(null, message); }
+                          });
+
+                  RealE2eeTransport aliceTransport = new RealE2eeTransport(
+                          context, alice, 1, new RealE2eeTransport.Listener() {
+                              @Override public void onReady() { ready.countDown(); }
+                              @Override public void onMessage(String from, String message, String id) {}
+                              @Override public void onDelivery(String id, String status) {}
+                              @Override public void onError(String message) { error.compareAndSet(null, message); }
+                          });
+
+                  try {
+                      bobTransport.connect("wss://nexus-blind-relay.onrender.com");
+                      aliceTransport.connect("wss://nexus-blind-relay.onrender.com");
+
+                      assertTrue("Both E2EE transports did not connect",
+                              ready.await(20, TimeUnit.SECONDS));
+
+                      aliceTransport.sendText(bob, 1, plaintext);
+
+                      assertTrue("B did not receive decrypted message",
+                              received.await(30, TimeUnit.SECONDS));
+                      assertEquals(plaintext, clear.get());
+                      assertNull("E2EE/relay error: " + error.get(), error.get());
+                  } finally {
+                      aliceTransport.close();
+                      bobTransport.close();
+                  }
+              }
+          }
+          EOF
+
           cat > app/src/test/java/com/nexus/app/MessageEnvelopeTest.java <<'EOF'
           package com.nexus.app;
 
@@ -1758,6 +1843,17 @@ jobs:
             -p "$GITHUB_WORKSPACE" \
             :app:test \
             --stacktrace
+
+      - name: Run live Android E2EE test
+        run: |
+          set -e
+          echo "no" | avdmanager create avd             --force             --name nexus-ci             --package "system-images;android-35;google_apis;x86_64"             --device "pixel_2"
+          nohup emulator             -avd nexus-ci             -no-window             -no-audio             -no-boot-anim             -gpu swiftshader_indirect             > /tmp/nexus-emulator.log 2>&1 &
+          adb wait-for-device
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+          /tmp/nexus-gradle/gradlew             -p "$GITHUB_WORKSPACE"             :app:connectedDebugAndroidTest             --stacktrace
 
       - name: Build APK
         run: |
