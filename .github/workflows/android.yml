@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
 
     steps:
       - name: Checkout
@@ -30,7 +30,7 @@ jobs:
             "platforms;android-35" \
             "build-tools;35.0.0" \
             "emulator" \
-            "system-images;android-34;google_apis;x86_64"
+            "system-images;android-34;google_apis;arm64-v8a"
 
       - name: Gradle
         run: |
@@ -1908,7 +1908,7 @@ jobs:
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
           export ANDROID_AVD_HOME="$RUNNER_TEMP/nexus-avd"
           mkdir -p "$ANDROID_AVD_HOME"
-          echo "no" | avdmanager create avd --force --name nexus-ci --package "system-images;android-34;google_apis;x86_64" --device "pixel_2"
+          echo "no" | avdmanager create avd --force --name nexus-ci --package "system-images;android-34;google_apis;arm64-v8a" --device "pixel_2"
           echo "=== AVD inventory ==="
           avdmanager list avd
           test -f "$ANDROID_AVD_HOME/nexus-ci.ini"
