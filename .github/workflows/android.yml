@@ -1,5 +1,9 @@
 name: NEXUS Android Build
 
+concurrency:
+  group: nexus-android-ci
+  cancel-in-progress: true
+
 on:
   push:
     branches: [main]
