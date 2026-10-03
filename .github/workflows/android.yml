@@ -149,8 +149,7 @@ jobs:
 
               implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 
-              // Android artifact owns the native libsignal runtime for the app.
-              // Keep the JVM client artifact out of the app classpath to avoid duplicate bindings.
+              implementation 'org.signal:libsignal-client:0.102.2'
               implementation 'org.signal:libsignal-android:0.102.2'
 
               coreLibraryDesugaring \
