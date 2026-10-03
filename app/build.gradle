@@ -4,23 +4,29 @@ plugins {
 
 android {
     namespace 'com.nexus.app'
+
     compileSdk 35
 
     defaultConfig {
         applicationId 'com.nexus.app'
+
         minSdk 26
         targetSdk 35
+
         versionCode 29
         versionName '0.22.0-live-chat'
+
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 
     compileOptions {
         coreLibraryDesugaringEnabled true
+
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
 
+    // Build a phone-sized ARM64 APK instead of bundling every CPU architecture.
     splits {
         abi {
             enable true
@@ -34,10 +40,15 @@ android {
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'androidx.core:core:1.15.0'
+
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+
     implementation 'org.signal:libsignal-client:0.104.0'
     implementation 'org.signal:libsignal-android:0.104.0'
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
+
+    coreLibraryDesugaring \
+        'com.android.tools:desugar_jdk_libs:2.1.5'
+
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test:runner:1.6.2'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
