@@ -1920,7 +1920,65 @@ jobs:
             exit 1
           fi
           echo "Waiting for ADB device..."
-          if ! timeout 180 adb wait-for-device; then
+          adb start-server
+          ADB_READY=0
+          for i in $(seq 1 180); do
+            if adb get-state 2>/dev/null | grep -q '^device
+          echo "ADB device connected. Waiting for Android boot completion..."
+          for i in $(seq 1 180); do
+            if adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' | grep -q '^1$'; then
+              echo "Android boot completed."
+              break
+            fi
+            if [ "$i" -eq 180 ]; then
+              echo "Android emulator did not finish booting."
+              cat /tmp/nexus-emulator.log || true
+              adb logcat -d -t 300 || true
+              exit 1
+            fi
+            sleep 2
+          done
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+          /tmp/nexus-gradle/gradlew -p "$GITHUB_WORKSPACE" :app:connectedDebugAndroidTest --stacktrace
+      - name: Build APK
+        run: |
+          /tmp/nexus-gradle/gradlew \
+            -p "$GITHUB_WORKSPACE" \
+            :app:assembleDebug \
+            --stacktrace
+
+      - name: Upload API report
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEXUS-0.22.0-live-chat-report
+          path: api-report
+          retention-days: 14
+
+      - name: Prepare APK artifact
+        run: |
+          set -e
+          mkdir -p dist
+          find app/build/outputs/apk -type f -name "*.apk" -print
+          APK="$(find app/build/outputs/apk/debug -type f -name "app-arm64-v8a-debug.apk" | head -n 1)"
+          test -n "$APK"
+          cp "$APK" dist/NEXUS-0.22.0-arm64.apk
+          ls -lh dist/NEXUS-0.22.0-arm64.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEXUS-0.22.0-live-chat-APK
+          path: dist/NEXUS-0.22.0-arm64.apk
+          retention-days: 14
+; then
+              ADB_READY=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ADB_READY" -ne 1 ]; then
             echo "Android emulator did not connect to ADB."
             echo "=== emulator process ==="
             ps -ef | grep '[e]mulator' || true
