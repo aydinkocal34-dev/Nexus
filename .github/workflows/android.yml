@@ -1900,48 +1900,60 @@ jobs:
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
           export ANDROID_AVD_HOME="$RUNNER_TEMP/nexus-avd"
           mkdir -p "$ANDROID_AVD_HOME"
-          echo "no" | avdmanager create avd --force --name nexus-ci --package "system-images;android-34;google_apis;arm64-v8a" --device "pixel_2"
-          echo "=== AVD inventory ==="
-          avdmanager list avd
-          test -f "$ANDROID_AVD_HOME/nexus-ci.ini"
-          if [ -e /dev/kvm ]; then
-            echo "=== KVM ==="
-            ls -l /dev/kvm
-            sudo chmod 666 /dev/kvm || true
-            ls -l /dev/kvm
-          fi
-          nohup emulator -avd nexus-ci -no-window -no-audio -no-boot-anim -no-snapshot -wipe-data -gpu swiftshader_indirect -accel on -no-metrics > /tmp/nexus-emulator.log 2>&1 &
+
+          echo "no" | avdmanager create avd --force \
+            --name nexus-ci \
+            --package "system-images;android-34;google_apis;arm64-v8a" \
+            --device "pixel_2"
+
+          emulator -avd nexus-ci \
+            -no-window -no-audio -no-boot-anim -no-snapshot -wipe-data \
+            -gpu swiftshader_indirect -accel on -no-metrics \
+            > /tmp/nexus-emulator.log 2>&1 &
           EMULATOR_PID=$!
-          echo "Emulator PID: $EMULATOR_PID"
+
           sleep 2
           if ! kill -0 "$EMULATOR_PID" 2>/dev/null; then
-            echo "Android emulator exited during startup."
             cat /tmp/nexus-emulator.log || true
             exit 1
           fi
-          echo "Waiting for ADB device..."
+
           adb start-server
-          ADB_READY=0
+          echo "Waiting for ADB device..."
           for i in $(seq 1 180); do
-            if adb get-state 2>/dev/null | grep -q '^device
-          echo "ADB device connected. Waiting for Android boot completion..."
-          for i in $(seq 1 180); do
-            if adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' | grep -q '^1$'; then
-              echo "Android boot completed."
+            if adb get-state 2>/dev/null | grep -q '^device$'; then
               break
             fi
             if [ "$i" -eq 180 ]; then
-              echo "Android emulator did not finish booting."
+              cat /tmp/nexus-emulator.log || true
+              adb devices -l || true
+              exit 1
+            fi
+            sleep 1
+          done
+
+          echo "Waiting for Android boot completion..."
+          for i in $(seq 1 180); do
+            if adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' | grep -q '^1$'; then
+              break
+            fi
+            if [ "$i" -eq 180 ]; then
               cat /tmp/nexus-emulator.log || true
               adb logcat -d -t 300 || true
               exit 1
             fi
             sleep 2
           done
+
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
-          /tmp/nexus-gradle/gradlew -p "$GITHUB_WORKSPACE" :app:connectedDebugAndroidTest --stacktrace
+
+          /tmp/nexus-gradle/gradlew \
+            -p "$GITHUB_WORKSPACE" \
+            :app:connectedDebugAndroidTest \
+            --stacktrace
+
       - name: Build APK
         run: |
           /tmp/nexus-gradle/gradlew \
