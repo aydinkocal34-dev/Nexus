@@ -152,12 +152,12 @@ jobs:
                   targetCompatibility JavaVersion.VERSION_17
               }
 
-              // Build a phone-sized ARM64 APK instead of bundling every CPU architecture.
+              // Build ARM64 for real phones and x86_64 for the CI emulator. The emulator runs x86_64,\n              // so omitting this ABI can leave the test process with the wrong libsignal native binary.
               splits {
                   abi {
                       enable true
                       reset()
-                      include "arm64-v8a"
+                      include "arm64-v8a", "x86_64"
                       universalApk false
                   }
               }
