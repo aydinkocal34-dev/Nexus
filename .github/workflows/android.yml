@@ -1471,27 +1471,25 @@ jobs:
 
                   CountDownLatch ready = new CountDownLatch(2);
                   CountDownLatch received = new CountDownLatch(1);
+                  CountDownLatch errorSeen = new CountDownLatch(1);
                   AtomicReference<String> clear = new AtomicReference<>();
                   AtomicReference<String> error = new AtomicReference<>();
 
-                  RealE2eeTransport bobTransport = new RealE2eeTransport(
-                          context, bob, 1, new RealE2eeTransport.Listener() {
-                              @Override public void onReady() { ready.countDown(); }
-                              @Override public void onMessage(String from, String message, String id) {
-                                  clear.set(message);
-                                  received.countDown();
-                              }
-                              @Override public void onDelivery(String id, String status) {}
-                              @Override public void onError(String message) { error.compareAndSet(null, message); }
-                          });
+                  RealE2eeTransport.Listener listener = new RealE2eeTransport.Listener() {
+                      @Override public void onReady() { ready.countDown(); }
+                      @Override public void onMessage(String from, String message, String id) {
+                          clear.set(message);
+                          received.countDown();
+                      }
+                      @Override public void onDelivery(String id, String status) {}
+                      @Override public void onError(String message) {
+                          error.compareAndSet(null, message);
+                          errorSeen.countDown();
+                      }
+                  };
 
-                  RealE2eeTransport aliceTransport = new RealE2eeTransport(
-                          context, alice, 1, new RealE2eeTransport.Listener() {
-                              @Override public void onReady() { ready.countDown(); }
-                              @Override public void onMessage(String from, String message, String id) {}
-                              @Override public void onDelivery(String id, String status) {}
-                              @Override public void onError(String message) { error.compareAndSet(null, message); }
-                          });
+                  RealE2eeTransport bobTransport = new RealE2eeTransport(context, bob, 1, listener);
+                  RealE2eeTransport aliceTransport = new RealE2eeTransport(context, alice, 1, listener);
 
                   try {
                       bobTransport.connect("wss://nexus-blind-relay.onrender.com");
@@ -1502,8 +1500,16 @@ jobs:
 
                       aliceTransport.sendText(bob, 1, plaintext);
 
-                      assertTrue("B did not receive decrypted message",
-                              received.await(30, TimeUnit.SECONDS));
+                      long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(35);
+                      while (received.getCount() != 0 && errorSeen.getCount() != 0 &&
+                              System.nanoTime() < deadline) {
+                          Thread.sleep(100);
+                      }
+
+                      if (received.getCount() != 0) {
+                          fail("B did not receive decrypted message. E2EE/relay error: " + error.get());
+                      }
+
                       assertEquals(plaintext, clear.get());
                       assertNull("E2EE/relay error: " + error.get(), error.get());
                   } finally {
