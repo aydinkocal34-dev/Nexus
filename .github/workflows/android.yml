@@ -1849,29 +1849,27 @@ jobs:
         run: |
           set -e
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
-
-          echo "no" | avdmanager create avd \
-            --force \
-            --name nexus-ci \
-            --package "system-images;android-34;google_apis;x86_64" \
-            --device "pixel_2"
-
-          nohup emulator \
-            -avd nexus-ci \
-            -no-window \
-            -no-audio \
-            -no-boot-anim \
-            -no-snapshot \
-            -wipe-data \
-            -gpu swiftshader_indirect \
-            > /tmp/nexus-emulator.log 2>&1 &
-
+          echo "no" | avdmanager create avd --force --name nexus-ci --package "system-images;android-34;google_apis;x86_64" --device "pixel_2"
+          nohup emulator -avd nexus-ci -no-window -no-audio -no-boot-anim -no-snapshot -wipe-data -gpu swiftshader_indirect > /tmp/nexus-emulator.log 2>&1 &
           adb wait-for-device
-
           echo "Waiting for Android boot completion..."
           for i in $(seq 1 90); do
-            if adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' | grep -q '^1
-
+            if adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' | grep -q '^1$'; then
+              echo "Android boot completed."
+              break
+            fi
+            if [ "$i" -eq 90 ]; then
+              echo "Android emulator did not finish booting."
+              cat /tmp/nexus-emulator.log || true
+              adb logcat -d -t 300 || true
+              exit 1
+            fi
+            sleep 2
+          done
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+          /tmp/nexus-gradle/gradlew -p "$GITHUB_WORKSPACE" :app:connectedDebugAndroidTest --stacktrace
       - name: Build APK
         run: |
           /tmp/nexus-gradle/gradlew \
