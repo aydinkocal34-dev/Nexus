@@ -1103,7 +1103,7 @@ jobs:
               private GradientDrawable bg(int color,float radius){
                   GradientDrawable d=new GradientDrawable(); d.setColor(color); d.setCornerRadius(dp(radius)); return d;
               }
-              private TextView iconText(String icon,String title,String sub){
+              private View iconText(String icon,String title,String sub){
                   LinearLayout box=new LinearLayout(this); box.setGravity(Gravity.CENTER_VERTICAL); box.setPadding(dp(12),dp(10),dp(12),dp(10));
                   TextView i=text(icon,25,TEXT,true); i.setGravity(Gravity.CENTER); i.setBackground(bg(Color.rgb(16,67,111),18));
                   box.addView(i,new LinearLayout.LayoutParams(dp(48),dp(48)));
@@ -1157,8 +1157,8 @@ jobs:
 
                   LinearLayout grid=new LinearLayout(this); grid.setOrientation(LinearLayout.VERTICAL);
                   LinearLayout r1=new LinearLayout(this); r1.setWeightSum(2);
-                  TextView chat=iconText("◉","Sohbet","Güvenli mesajlaş");
-                  TextView people=iconText("♙","Kişiler","NEXUS ID ekle");
+                  View chat=iconText("◉","Sohbet","Güvenli mesajlaş");
+                  View people=iconText("♙","Kişiler","NEXUS ID ekle");
                   r1.addView(chat,new LinearLayout.LayoutParams(0,dp(92),1)); r1.addView(people,new LinearLayout.LayoutParams(0,dp(92),1));
                   grid.addView(r1); add(grid,10);
                   chat.setOnClickListener(v->showChat(activePeer.isEmpty()?"Yeni sohbet":activePeer));
