@@ -1849,16 +1849,22 @@ jobs:
             --stacktrace
 
       - name: Run live Android E2EE test
-        run: |
-          set -e
-          echo "no" | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd             --force             --name nexus-ci             --package "system-images;android-35;google_apis;x86_64"             --device "pixel_2"
-          nohup emulator             -avd nexus-ci             -no-window             -no-audio             -no-boot-anim             -gpu swiftshader_indirect             > /tmp/nexus-emulator.log 2>&1 &
-          export PATH="$ANDROID_HOME/platform-tools:$PATH"
-          adb wait-for-device
-          adb shell settings put global window_animation_scale 0
-          adb shell settings put global transition_animation_scale 0
-          adb shell settings put global animator_duration_scale 0
-          /tmp/nexus-gradle/gradlew             -p "$GITHUB_WORKSPACE"             :app:connectedDebugAndroidTest             --stacktrace
+        timeout-minutes: 8
+        uses: ReactiveCircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          force-avd-creation: true
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
+          disable-animations: true
+          script: |
+            set -e
+            export PATH="$ANDROID_HOME/platform-tools:$PATH"
+            adb wait-for-device
+            adb shell getprop sys.boot_completed
+            /tmp/nexus-gradle/gradlew               -p "$GITHUB_WORKSPACE"               :app:connectedDebugAndroidTest               --stacktrace
 
       - name: Build APK
         run: |
