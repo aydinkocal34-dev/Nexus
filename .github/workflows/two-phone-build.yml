@@ -16,7 +16,7 @@ jobs:
           java-version: '21'
       - uses: android-actions/setup-android@v4
         with:
-          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0 emulator system-images;android-34;google_apis;arm64-v8a'
       - name: Gradle
         run: |
           mkdir -p /tmp/nexus-gradle
@@ -25,6 +25,53 @@ jobs:
           gradle wrapper --gradle-version 9.5.1
       - name: JVM tests
         run: /tmp/nexus-gradle/gradlew -p "$GITHUB_WORKSPACE" :app:test --stacktrace
+      - name: ARM64 Android runtime E2EE test
+        run: |
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+          export ANDROID_AVD_HOME="$RUNNER_TEMP/nexus-avd"
+          mkdir -p "$ANDROID_AVD_HOME"
+          echo "no" | avdmanager create avd --force --name nexus-ci --package "system-images;android-34;google_apis;arm64-v8a" --device "pixel_2"
+          emulator -avd nexus-ci -no-window -no-audio -no-boot-anim -no-snapshot -wipe-data -gpu swiftshader_indirect -accel on -no-metrics > "$RUNNER_TEMP/nexus-emulator.log" 2>&1 &
+          EMULATOR_PID=$!
+          adb start-server
+          for i in $(seq 1 180); do
+            if adb get-state 2>/dev/null | grep -q '^device        run: /tmp/nexus-gradle/gradlew -p "$GITHUB_WORKSPACE" :app:assembleDebug --stacktrace
+      - name: Prepare APK
+        run: |
+          mkdir -p dist
+          APK=$(find app/build/outputs/apk/debug -name 'app-arm64-v8a-debug.apk' | head -1)
+          test -n "$APK"
+          cp "$APK" dist/NEXUS-0.22.0-arm64.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NEXUS-two-phone-arm64
+          path: dist/NEXUS-0.22.0-arm64.apk
+; then break; fi
+            if [ "$i" -eq 180 ]; then cat "$RUNNER_TEMP/nexus-emulator.log" || true; exit 1; fi
+            sleep 1
+          done
+          for i in $(seq 1 180); do
+            if adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' | grep -q '^1        run: /tmp/nexus-gradle/gradlew -p "$GITHUB_WORKSPACE" :app:assembleDebug --stacktrace
+      - name: Prepare APK
+        run: |
+          mkdir -p dist
+          APK=$(find app/build/outputs/apk/debug -name 'app-arm64-v8a-debug.apk' | head -1)
+          test -n "$APK"
+          cp "$APK" dist/NEXUS-0.22.0-arm64.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NEXUS-two-phone-arm64
+          path: dist/NEXUS-0.22.0-arm64.apk
+; then break; fi
+            if [ "$i" -eq 180 ]; then cat "$RUNNER_TEMP/nexus-emulator.log" || true; adb logcat -d -t 300 || true; exit 1; fi
+            sleep 2
+          done
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+          /tmp/nexus-gradle/gradlew -p "$GITHUB_WORKSPACE" :app:connectedDebugAndroidTest --stacktrace
+          kill "$EMULATOR_PID" || true
+
       - name: Build ARM64 APK
         run: /tmp/nexus-gradle/gradlew -p "$GITHUB_WORKSPACE" :app:assembleDebug --stacktrace
       - name: Prepare APK
