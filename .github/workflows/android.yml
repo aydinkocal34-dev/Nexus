@@ -437,9 +437,10 @@ jobs:
               }
 
               @Override public void storeKyberPreKey(int id, KyberPreKeyRecord r) {
-                  super.storeKyberPreKey(id, r);
+                  // libsignal 0.102.2 may expose an uninitialized in-memory Kyber map;
+                  // persistence is authoritative for this store, so do not touch the parent map.
                   try { put(k("kyber", Integer.toString(id)), r.serialize()); addIndex("kyber", Integer.toString(id)); }
-                  catch (Exception e) { throw new IllegalStateException(e); }
+                  catch (Exception e) { throw new IllegalStateException("Persistent Kyber pre-key write failed", e); }
               }
 
               @Override public KyberPreKeyRecord loadKyberPreKey(int id) throws InvalidKeyIdException {
@@ -468,7 +469,7 @@ jobs:
 
               public void removeKyberPreKey(int id) {
                   try { remove(k("kyber", Integer.toString(id))); removeIndex("kyber", Integer.toString(id)); }
-                  catch (Exception e) { throw new IllegalStateException(e); }
+                  catch (Exception e) { throw new IllegalStateException("Persistent Kyber pre-key delete failed", e); }
               }
 
               @Override public void storeSenderKey(SignalProtocolAddress a, UUID distributionId, SenderKeyRecord r) {
