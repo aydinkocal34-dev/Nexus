@@ -1849,6 +1849,7 @@ jobs:
           set -e
           echo "no" | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd             --force             --name nexus-ci             --package "system-images;android-35;google_apis;x86_64"             --device "pixel_2"
           nohup emulator             -avd nexus-ci             -no-window             -no-audio             -no-boot-anim             -gpu swiftshader_indirect             > /tmp/nexus-emulator.log 2>&1 &
+          export PATH="$ANDROID_HOME/platform-tools:$PATH"
           adb wait-for-device
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
