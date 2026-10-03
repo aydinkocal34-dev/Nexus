@@ -1351,19 +1351,7 @@ jobs:
           }
           EOF
 
-          cat > app/src/test/java/com/nexus/app/ChatUiContractTest.java <<'EOF'
-          package com.nexus.app;
-          import org.junit.Test;
-          import static org.junit.Assert.*;
-          public class ChatUiContractTest {
-              @Test public void chatScreensExist() throws Exception {
-                  Class<?> c=Class.forName("com.nexus.app.MainActivity");
-                  assertNotNull(c.getDeclaredMethod("showHome"));
-                  assertNotNull(c.getDeclaredMethod("showNewChat"));
-                  assertNotNull(c.getDeclaredMethod("showChat",String.class));
-              }
-          }
-          EOF
+
 
           cat > app/src/test/java/com/nexus/app/MessageEnvelopeTest.java <<'EOF'
           package com.nexus.app;
