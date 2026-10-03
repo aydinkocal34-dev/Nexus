@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: nexus-blind-relay
+    runtime: node
+    rootDir: relay
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
