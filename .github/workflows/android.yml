@@ -117,7 +117,22 @@ jobs:
 
               compileSdk 35
 
-              defaultConfig {
+              // Android must not package libsignal-client's desktop JNI resources.
+          // Native.kt prefers architecture-suffixed root resources; on x86_64 that can
+          // otherwise select libsignal_jni_amd64.so from libsignal-client instead of
+          // the Android JNI supplied by libsignal-android.
+          packaging {
+              resources {
+                  excludes += [
+                      'libsignal_jni_amd64.so',
+                      'libsignal_jni_amd64.dylib',
+                      'libsignal_jni_aarch64.dylib',
+                      'signal_jni_amd64.dll'
+                  ]
+              }
+          }
+
+          defaultConfig {
                   applicationId 'com.nexus.app'
 
                   minSdk 26
