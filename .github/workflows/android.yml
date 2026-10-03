@@ -1466,42 +1466,68 @@ jobs:
                   final String plaintext = "NEXUS-LIVE-E2EE-" + System.currentTimeMillis();
 
                   CountDownLatch ready = new CountDownLatch(2);
-                  CountDownLatch received = new CountDownLatch(1);
+                  CountDownLatch outcome = new CountDownLatch(1);
                   AtomicReference<String> clear = new AtomicReference<>();
                   AtomicReference<String> error = new AtomicReference<>();
+                  StringBuilder trace = new StringBuilder();
 
                   RealE2eeTransport bobTransport = new RealE2eeTransport(
                           context, bob, 1, new RealE2eeTransport.Listener() {
-                              @Override public void onReady() { ready.countDown(); }
-                              @Override public void onMessage(String from, String message, String id) {
-                                  clear.set(message);
-                                  received.countDown();
+                              @Override public void onReady() {
+                                  trace.append("B:onReady;");
+                                  ready.countDown();
                               }
-                              @Override public void onDelivery(String id, String status) {}
-                              @Override public void onError(String message) { error.compareAndSet(null, message); }
+                              @Override public void onMessage(String from, String message, String id) {
+                                  trace.append("B:onMessage;");
+                                  clear.set(message);
+                                  outcome.countDown();
+                              }
+                              @Override public void onDelivery(String id, String status) {
+                                  trace.append("B:onDelivery:" + status + ";");
+                              }
+                              @Override public void onError(String message) {
+                                  trace.append("B:onError:" + message + ";");
+                                  error.compareAndSet(null, "B: " + message);
+                                  outcome.countDown();
+                              }
                           });
 
                   RealE2eeTransport aliceTransport = new RealE2eeTransport(
                           context, alice, 1, new RealE2eeTransport.Listener() {
-                              @Override public void onReady() { ready.countDown(); }
-                              @Override public void onMessage(String from, String message, String id) {}
-                              @Override public void onDelivery(String id, String status) {}
-                              @Override public void onError(String message) { error.compareAndSet(null, message); }
+                              @Override public void onReady() {
+                                  trace.append("A:onReady;");
+                                  ready.countDown();
+                              }
+                              @Override public void onMessage(String from, String message, String id) {
+                                  trace.append("A:onMessage;");
+                              }
+                              @Override public void onDelivery(String id, String status) {
+                                  trace.append("A:onDelivery:" + status + ";");
+                              }
+                              @Override public void onError(String message) {
+                                  trace.append("A:onError:" + message + ";");
+                                  error.compareAndSet(null, "A: " + message);
+                                  outcome.countDown();
+                              }
                           });
 
                   try {
+                      trace.append("connect:B;");
                       bobTransport.connect("wss://nexus-blind-relay.onrender.com");
+                      trace.append("connect:A;");
                       aliceTransport.connect("wss://nexus-blind-relay.onrender.com");
 
-                      assertTrue("Both E2EE transports did not connect",
+                      assertTrue("Both E2EE transports did not connect. trace=" + trace,
                               ready.await(20, TimeUnit.SECONDS));
 
+                      trace.append("send:A->B;");
                       aliceTransport.sendText(bob, 1, plaintext);
 
-                      assertTrue("B did not receive decrypted message",
-                              received.await(30, TimeUnit.SECONDS));
+                      assertTrue("E2EE flow timed out. trace=" + trace,
+                              outcome.await(35, TimeUnit.SECONDS));
+                      assertNull("E2EE/relay error: " + error.get() + " trace=" + trace,
+                              error.get());
                       assertEquals(plaintext, clear.get());
-                      assertNull("E2EE/relay error: " + error.get(), error.get());
                   } finally {
                       aliceTransport.close();
                       bobTransport.close();
