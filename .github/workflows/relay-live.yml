@@ -2,6 +2,11 @@ name: Relay Live Smoke Test
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'relay/**'
+      - '.github/workflows/relay-live.yml'
 
 jobs:
   live-relay:
