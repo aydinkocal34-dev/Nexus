@@ -36,9 +36,15 @@ jobs:
           export ANDROID_AVD_HOME="$RUNNER_TEMP/nexus-avd"
           mkdir -p "$ANDROID_AVD_HOME"
 
-          echo "no" | avdmanager create avd --force             --name nexus-ci             --package "system-images;android-34;google_apis;arm64-v8a"             --device "pixel_2"
+          echo "no" | avdmanager create avd --force \
+            --name nexus-ci \
+            --package "system-images;android-34;google_apis;arm64-v8a" \
+            --device "pixel_2"
 
-          emulator -avd nexus-ci             -no-window -no-audio -no-boot-anim -no-snapshot -wipe-data             -gpu swiftshader_indirect -accel on -no-metrics             > "$RUNNER_TEMP/nexus-emulator.log" 2>&1 &
+          emulator -avd nexus-ci \
+            -no-window -no-audio -no-boot-anim -no-snapshot -wipe-data \
+            -gpu swiftshader_indirect -accel off -no-metrics \
+            > "$RUNNER_TEMP/nexus-emulator.log" 2>&1 &
           EMULATOR_PID=$!
 
           adb start-server
