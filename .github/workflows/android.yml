@@ -1100,6 +1100,7 @@ jobs:
           import android.widget.TextView;
           import java.util.ArrayList;
           import java.util.List;
+          import java.util.UUID;
 
           public class MainActivity extends Activity implements RealE2eeTransport.Listener {
               private static final int BG=Color.rgb(4,13,25), CARD=Color.rgb(12,28,48), CARD2=Color.rgb(18,39,65);
