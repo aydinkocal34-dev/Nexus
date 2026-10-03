@@ -125,6 +125,8 @@ wss.on("connection", (ws) => {
         from: ws.peerId,
         ciphertext: msg.ciphertext,
         ciphertextType: Number.isInteger(msg.ciphertextType) ? msg.ciphertextType : 0,
+        fromDeviceId: Number.isInteger(msg.fromDeviceId) && msg.fromDeviceId >= 1 && msg.fromDeviceId <= 255
+          ? msg.fromDeviceId : 1,
         expiresAt: Date.now() + Math.min(TTL_MS, Math.max(1000, Number(msg.ttlMs) || TTL_MS))
       };
 
