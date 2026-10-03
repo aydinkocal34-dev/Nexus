@@ -65,20 +65,20 @@ jobs:
             const got = await waitFor(B.messages, m => m.type === 'ciphertext' && m.id === id, 'ciphertext A->B');
             if (Buffer.from(got.ciphertext, 'base64').toString() !== payload || got.from !== 'test-peer-A-20261003' || got.fromDeviceId !== 1) throw new Error('ciphertext integrity mismatch: '+JSON.stringify(got));
 
-            B.ws.send(JSON.stringify({type:'ack', id, toPeerId:'test-peer-A-20261003'}));
+            B.ws.send(JSON.stringify({type:'ack', id, to:'test-peer-A-20261003'}));
             await waitFor(A.messages, m => m.type === 'delivery' && m.id === id && m.status === 'read', 'ACK delivery');
 
             A.ws.send(JSON.stringify({
-              type:'relay', id, toPeerId:'test-peer-B-20261003',
-              ciphertext:payload, ciphertextType:'signal-sealed-box',
-              fromDeviceId:'device-A-01', ttlMs:60000
+              type:'relay', id, to:'test-peer-B-20261003',
+              ciphertext:Buffer.from(payload).toString('base64'), ciphertextType:1,
+              fromDeviceId:1, ttlMs:60000
             }));
             await waitFor(A.messages, m => m.type === 'delivery' && m.id === id && m.status === 'replay', 'replay rejection');
 
             A.ws.send(JSON.stringify({
               type:'relay', id:'offline-001', to:'test-peer-OFFLINE-20261003',
               ciphertext:Buffer.from('opaque').toString('base64'), ciphertextType:1,
-              fromDeviceId:'device-A-01', ttlMs:60000
+              fromDeviceId:1, ttlMs:60000
             }));
             await waitFor(A.messages, m => m.type === 'delivery' && m.id === 'offline-001' && m.status === 'offline', 'offline delivery');
 
