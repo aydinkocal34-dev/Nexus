@@ -698,3 +698,102 @@ jobs:
                                   String id = msg.getString("id");
                                   String from = msg.getString("from");
                                   String bundle = msg.getString("bundle");
+                                  long expiresAt = msg.getLong("expiresAt");
+                                  main.post(() -> listener.onPreKey(id, from, bundle, expiresAt));
+                              } else if ("delivery".equals(type)) {
+                                  String id = msg.getString("id");
+                                  String status = msg.getString("status");
+                                  main.post(() -> listener.onDelivery(id, status));
+                              } else if ("error".equals(type)) {
+                                  main.post(() -> listener.onError(msg.optString("code", "RELAY_ERROR")));
+                              }
+                          } catch (Exception e) {
+                              main.post(() -> listener.onError("Invalid relay frame"));
+                          }
+                      }
+
+                      @Override public void onFailure(WebSocket webSocket, Throwable t, Response response) {
+                          main.post(() -> listener.onError(t.getMessage() == null ? "Relay connection failed" : t.getMessage()));
+                      }
+
+                      @Override public void onClosed(WebSocket webSocket, int code, String reason) {
+                          main.post(listener::onClosed);
+                      }
+                  });
+              }
+
+              public boolean sendCiphertext(String id, String toPeerId, byte[] ciphertext, long ttlMs) {
+                  return sendCiphertext(id, toPeerId, ciphertext, 0, 1, ttlMs);
+              }
+
+              public boolean sendCiphertext(String id, String toPeerId, byte[] ciphertext, int ciphertextType, int fromDeviceId, long ttlMs) {
+                  if (socket == null) return false;
+                  try {
+                      JSONObject msg = new JSONObject();
+                      msg.put("type", "relay");
+                      msg.put("id", id);
+                      msg.put("to", toPeerId);
+                      msg.put("ciphertext", Base64.getEncoder().encodeToString(ciphertext));
+                      msg.put("ciphertextType", ciphertextType);
+                      msg.put("fromDeviceId", fromDeviceId);
+                      msg.put("ttlMs", Math.max(1000L, ttlMs));
+                      return socket.send(msg.toString());
+                  } catch (Exception e) {
+                      main.post(() -> listener.onError("Could not encode relay frame"));
+                      return false;
+                  }
+              }
+
+              public boolean requestPreKey(String id, String toPeerId, long ttlMs) {
+                  if (socket == null) return false;
+                  try {
+                      JSONObject msg = new JSONObject();
+                      msg.put("type", "prekey-request");
+                      msg.put("id", id);
+                      msg.put("to", toPeerId);
+                      msg.put("ttlMs", Math.max(1000L, ttlMs));
+                      return socket.send(msg.toString());
+                  } catch (Exception e) {
+                      main.post(() -> listener.onError("Could not encode prekey request"));
+                      return false;
+                  }
+              }
+
+              public boolean sendPreKey(String id, String toPeerId, String bundle, long ttlMs) {
+                  if (socket == null) return false;
+                  try {
+                      JSONObject msg = new JSONObject();
+                      msg.put("type", "prekey");
+                      msg.put("id", id);
+                      msg.put("to", toPeerId);
+                      msg.put("bundle", bundle);
+                      msg.put("ttlMs", Math.max(1000L, ttlMs));
+                      return socket.send(msg.toString());
+                  } catch (Exception e) {
+                      main.post(() -> listener.onError("Could not encode prekey frame"));
+                      return false;
+                  }
+              }
+
+              public boolean sendReadReceipt(String id, String toPeerId) {
+                  if (socket == null) return false;
+                  try {
+                      JSONObject msg = new JSONObject();
+                      msg.put("type", "ack");
+                      msg.put("id", id);
+                      msg.put("to", toPeerId);
+                      return socket.send(msg.toString());
+                  } catch (Exception e) {
+                      main.post(() -> listener.onError("Could not encode read receipt"));
+                      return false;
+                  }
+              }
+
+              public void close() {
+                  if (socket != null) socket.close(1000, "client closing");
+                  client.dispatcher().executorService().shutdown();
+              }
+          }
+          EOF
+
+          cat > app/src/main/java/com/nexus/app/SignalPreKeyEnvelope.java <<'EOF'
