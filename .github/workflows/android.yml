@@ -995,17 +995,18 @@ jobs:
               }
               private final DeviceE2eeController e2ee;
               private final RelayClient relay;
+              private final String localPeerId;
               private final int localDeviceId;
               private final Listener listener;
               private final List<Pending> pending=new ArrayList<>();
 
               public RealE2eeTransport(Context context,String localPeerId,int localDeviceId,Listener listener)throws Exception{
                   if(localPeerId==null||localPeerId.length()<8)throw new IllegalArgumentException("Invalid local peer ID");
-                  this.localDeviceId=localDeviceId; this.listener=listener;
+                  this.localPeerId=localPeerId; this.localDeviceId=localDeviceId; this.listener=listener;
                   this.e2ee=new DeviceE2eeController(context,localPeerId,localDeviceId);
                   this.relay=new RelayClient(this);
               }
-              public void connect(String wssUrl){relay.connect(wssUrl,e2ee.getLocalPeerId());}
+              public void connect(String wssUrl){relay.connect(wssUrl,localPeerId);}
               public void requestSession(String remotePeerId){relay.requestPreKey(UUID.randomUUID().toString(),remotePeerId,60000L);}
               public synchronized String sendText(String remotePeerId,int remoteDeviceId,String text){
                   String id=UUID.randomUUID().toString();
