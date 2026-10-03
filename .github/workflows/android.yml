@@ -943,15 +943,37 @@ jobs:
                   byte[] signedSig = store.getIdentityKeyPair().getPrivateKey()
                           .calculateSignature(signed.getPublicKey().serialize());
 
-                  KEMKeyPair kyber = KEMKeyPair.generate(KEMKeyType.KYBER_1024);
-                  byte[] kyberSig = store.getIdentityKeyPair().getPrivateKey()
-                          .calculateSignature(kyber.getPublicKey().serialize());
+                  final KEMKeyPair kyber;
+                  final byte[] kyberSig;
+                  try {
+                      kyber = KEMKeyPair.generate(KEMKeyType.KYBER_1024);
+                  } catch (Exception e) {
+                      throw new IllegalStateException("Kyber generation failed", e);
+                  }
+                  try {
+                      kyberSig = store.getIdentityKeyPair().getPrivateKey()
+                              .calculateSignature(kyber.getPublicKey().serialize());
+                  } catch (Exception e) {
+                      throw new IllegalStateException("Kyber signature failed", e);
+                  }
 
-                  store.storePreKey(preKeyId, new PreKeyRecord(preKeyId, preKey));
-                  store.storeSignedPreKey(signedId, new SignedPreKeyRecord(
-                          signedId, System.currentTimeMillis(), signed, signedSig));
-                  store.storeKyberPreKey(kyberId, new KyberPreKeyRecord(
-                          kyberId, System.currentTimeMillis(), kyber, kyberSig));
+                  try {
+                      store.storePreKey(preKeyId, new PreKeyRecord(preKeyId, preKey));
+                  } catch (Exception e) {
+                      throw new IllegalStateException("EC pre-key store failed", e);
+                  }
+                  try {
+                      store.storeSignedPreKey(signedId, new SignedPreKeyRecord(
+                              signedId, System.currentTimeMillis(), signed, signedSig));
+                  } catch (Exception e) {
+                      throw new IllegalStateException("Signed pre-key store failed", e);
+                  }
+                  try {
+                      store.storeKyberPreKey(kyberId, new KyberPreKeyRecord(
+                              kyberId, System.currentTimeMillis(), kyber, kyberSig));
+                  } catch (Exception e) {
+                      throw new IllegalStateException("Kyber pre-key store failed", e);
+                  }
 
                   return new SignalPreKeyEnvelope(
                           store.getLocalRegistrationId(), localDeviceId(),
@@ -1443,6 +1465,28 @@ jobs:
                   <uses-library android:name="android.test.runner" android:required="false"/>
               </application>
           </manifest>
+          EOF
+
+          cat > app/src/androidTest/java/com/nexus/app/E2eeSessionFoundationInstrumentedTest.java <<'EOF'
+          package com.nexus.app;
+
+          import android.content.Context;
+          import androidx.test.ext.junit.runners.AndroidJUnit4;
+          import androidx.test.platform.app.InstrumentationRegistry;
+          import org.junit.Test;
+          import org.junit.runner.RunWith;
+
+          @RunWith(AndroidJUnit4.class)
+          public class E2eeSessionFoundationInstrumentedTest {
+              @Test
+              public void persistentLibsignalRoundTripWorksBeforeRelayTest() throws Exception {
+                  Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+                  String result = E2eeSessionEngine.runPersistentRoundTrip(context);
+                  if (!result.contains("PERSISTENT E2EE ACTIVE")) {
+                      throw new AssertionError("Unexpected E2EE foundation result: " + result);
+                  }
+              }
+          }
           EOF
 
           cat > app/src/androidTest/java/com/nexus/app/LiveE2eeTransportInstrumentedTest.java <<'EOF'
