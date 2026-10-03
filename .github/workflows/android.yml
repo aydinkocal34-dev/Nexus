@@ -1465,8 +1465,21 @@ jobs:
                   final String bob = "ci-bob-" + System.currentTimeMillis();
                   final String plaintext = "NEXUS-LIVE-E2EE-" + System.currentTimeMillis();
 
+                  // Native libsignal preflight: verify Android ABI/native JNI loading before crypto.
+                  // A missing/mismatched JNI library can otherwise surface only as guardedMap(...) == null.
+                  String[] abis = android.os.Build.SUPPORTED_ABIS;
+                  String nativeDir = context.getApplicationInfo().nativeLibraryDir;
+                  java.io.File nativeDirFile = new java.io.File(nativeDir);
+                  android.util.Log.i("NEXUS_LIBSIGNAL",
+                          "ABIS=" + java.util.Arrays.toString(abis)
+                                  + " nativeDir=" + nativeDir
+                                  + " files=" + java.util.Arrays.toString(nativeDirFile.list()));
+                  try {
+                      System.loadLibrary("signal_jni");
+                  } catch (UnsatisfiedLinkError e) {
+                      throw new AssertionError("signal_jni load failed: " + e, e);
+                  }
                   // Native libsignal preflight: isolate identity generation/signing from relay/session code.
-                  // This must work before either logical device is constructed.
                   org.signal.libsignal.protocol.IdentityKeyPair probe =
                           org.signal.libsignal.protocol.IdentityKeyPair.generate();
                   byte[] probeSignature =
