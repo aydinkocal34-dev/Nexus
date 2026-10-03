@@ -1869,14 +1869,37 @@ jobs:
         timeout-minutes: 12
         run: |
           set -euo pipefail
-          echo "no" | avdmanager create avd             --force             --name nexus-ci             --package "system-images;android-34;google_apis;x86_64"             --device "pixel_2"
-          nohup emulator             -avd nexus-ci             -no-window             -no-audio             -no-boot-anim             -gpu swiftshader_indirect             > /tmp/nexus-emulator.log 2>&1 &
+
+          echo "no" | avdmanager create avd \
+            --force \
+            --name nexus-ci \
+            --package "system-images;android-34;google_apis;x86_64" \
+            --device "pixel_2"
+
+          nohup emulator \
+            -avd nexus-ci \
+            -no-window \
+            -no-audio \
+            -no-boot-anim \
+            -gpu swiftshader_indirect \
+            > /tmp/nexus-emulator.log 2>&1 &
+
           for i in $(seq 1 180); do
-            if adb shell getprop sys.boot_completed 2>/dev/null | grep -q '^1
+            if adb shell getprop sys.boot_completed 2>/dev/null | grep -q "^1$"; then
+              break
+            fi
+            sleep 2
+          done
+
+          adb shell getprop sys.boot_completed | grep -q "^1$"
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
-          /tmp/nexus-gradle/gradlew             -p "$GITHUB_WORKSPACE"             :app:connectedDebugAndroidTest             --stacktrace
+
+          /tmp/nexus-gradle/gradlew \
+            -p "$GITHUB_WORKSPACE" \
+            :app:connectedDebugAndroidTest \
+            --stacktrace
 
       - name: Build APK
         run: |
