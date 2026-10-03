@@ -247,6 +247,7 @@ jobs:
           import java.util.List;
           import java.util.UUID;
           import java.util.UUID;
+          import java.util.UUID;
 
           /**
            * Persistent Signal store backed by Android Keystore-encrypted state.
@@ -1100,7 +1101,7 @@ jobs:
           import java.util.ArrayList;
           import java.util.List;
 
-          public class MainActivity extends Activity {
+          public class MainActivity extends Activity implements RealE2eeTransport.Listener {
               private static final int BG=Color.rgb(4,13,25), CARD=Color.rgb(12,28,48), CARD2=Color.rgb(18,39,65);
               private static final int TEXT=Color.WHITE, MUTED=Color.rgb(166,184,207), BLUE=Color.rgb(18,139,255);
               private LinearLayout root, content;
@@ -1300,8 +1301,8 @@ jobs:
                       String msg=input.getText().toString().trim();
                       if(msg.isEmpty())return;
                       if(transport==null || relayWss.isEmpty()){input.setError("Önce Ayarlar'dan WSS Relay bağla");return;}
-                      String id=transport.sendText(peer,1,msg);
-                      if(id!=null){messages.add(msg);input.setText("");showChat(peer);}
+                      transport.sendText(peer,1,msg);
+                      messages.add(msg);input.setText("");showChat(peer);
                   });
               }
           }
