@@ -1849,7 +1849,7 @@ jobs:
         run: |
           set -e
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
-          echo "no" | avdmanager create avd             --force             --name nexus-ci             --package "system-images;android-35;google_apis;x86_64"             --device "pixel_2"
+          echo "no" | avdmanager create avd             --force             --name nexus-ci             --package "system-images;android-34;google_apis;x86_64"             --device "pixel_2"
           nohup emulator             -avd nexus-ci             -no-window             -no-audio             -no-boot-anim             -gpu swiftshader_indirect             > /tmp/nexus-emulator.log 2>&1 &
           adb wait-for-device
           adb shell settings put global window_animation_scale 0
