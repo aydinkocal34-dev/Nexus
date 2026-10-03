@@ -1465,6 +1465,24 @@ jobs:
                   final String bob = "ci-bob-" + System.currentTimeMillis();
                   final String plaintext = "NEXUS-LIVE-E2EE-" + System.currentTimeMillis();
 
+                  // Native libsignal preflight: isolate identity generation/signing from relay/session code.
+                  // This must work before either logical device is constructed.
+                  org.signal.libsignal.protocol.IdentityKeyPair probe =
+                          org.signal.libsignal.protocol.IdentityKeyPair.generate();
+                  byte[] probeSignature =
+                          probe.getPrivateKey().calculateSignature(
+                                  probe.getPublicKey().getPublicKey().serialize());
+                  assertTrue("Fresh libsignal identity signing failed",
+                          probeSignature != null && probeSignature.length > 0);
+                  byte[] probeSerialized = probe.serialize();
+                  org.signal.libsignal.protocol.IdentityKeyPair restored =
+                          new org.signal.libsignal.protocol.IdentityKeyPair(probeSerialized);
+                  byte[] restoredSignature =
+                          restored.getPrivateKey().calculateSignature(
+                                  restored.getPublicKey().getPublicKey().serialize());
+                  assertTrue("Serialized libsignal identity signing failed",
+                          restoredSignature != null && restoredSignature.length > 0);
+
                   CountDownLatch ready = new CountDownLatch(2);
                   CountDownLatch outcome = new CountDownLatch(1);
                   AtomicReference<String> clear = new AtomicReference<>();
