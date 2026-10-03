@@ -30,7 +30,7 @@ jobs:
             "platforms;android-35" \
             "build-tools;35.0.0" \
             "emulator" \
-            "system-images;android-35;google_apis;x86_64"
+            "system-images;android-34;google_apis;x86_64"
 
       - name: Gradle
         run: |
@@ -1845,8 +1845,10 @@ jobs:
             --stacktrace
 
       - name: Run live Android E2EE test
+        timeout-minutes: 12
         run: |
           set -e
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
           echo "no" | avdmanager create avd             --force             --name nexus-ci             --package "system-images;android-35;google_apis;x86_64"             --device "pixel_2"
           nohup emulator             -avd nexus-ci             -no-window             -no-audio             -no-boot-anim             -gpu swiftshader_indirect             > /tmp/nexus-emulator.log 2>&1 &
           adb wait-for-device
