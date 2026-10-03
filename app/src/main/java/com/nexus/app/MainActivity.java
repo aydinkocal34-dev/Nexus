@@ -34,6 +34,7 @@ public class MainActivity extends Activity implements RealE2eeTransport.Listener
     private String activePeer="";
     private String localPeerId="";
     private String relayWss="wss://nexus-blind-relay.onrender.com";
+    private TextView connectionStatus;
     private RealE2eeTransport transport;
     private final Handler handler=new Handler();
     private static final String PREFS="nexus_runtime";
@@ -68,7 +69,7 @@ public class MainActivity extends Activity implements RealE2eeTransport.Listener
             localPeerId="NX-"+UUID.randomUUID().toString().replace("-","").substring(0,12).toUpperCase();
             p.edit().putString("peerId",localPeerId).apply();
         }
-        relayWss=p.getString("relayWss","");
+        relayWss=p.getString("relayWss","wss://nexus-blind-relay.onrender.com");
         createNotificationChannel();
         try { transport=new RealE2eeTransport(this,localPeerId,1,this); }
         catch(Exception ignored) {}
@@ -82,7 +83,8 @@ public class MainActivity extends Activity implements RealE2eeTransport.Listener
         back.setVisibility(title.equals("NEXUS")?View.GONE:View.VISIBLE); back.setOnClickListener(v->showHome());
         bar.addView(back,new LinearLayout.LayoutParams(dp(42),dp(52)));
         TextView t=text(title,22,TEXT,true); bar.addView(t,new LinearLayout.LayoutParams(0,dp(52),1));
-        bar.addView(text(title.equals("NEXUS")?"♧":"● ÇEVRİMİÇİ",11,title.equals("NEXUS")?MUTED:Color.rgb(48,225,130),true));
+        connectionStatus=text(title.equals("NEXUS")?"● BAĞLANIYOR":"● ÇEVRİMİÇİ",11,title.equals("NEXUS")?MUTED:Color.rgb(48,225,130),true);
+        bar.addView(connectionStatus);
         root.addView(bar);
         ScrollView scroll=new ScrollView(this); content=new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(dp(16),dp(4),dp(16),dp(18)); scroll.addView(content);
@@ -197,7 +199,9 @@ public class MainActivity extends Activity implements RealE2eeTransport.Listener
         NotificationManagerCompat.from(this).notify(Math.abs(from.hashCode()),n.build());
     }
 
-    @Override public void onReady(){}
+    @Override public void onReady(){
+        runOnUiThread(()->{ if(connectionStatus!=null) connectionStatus.setText("● GÜVENLİ BAĞLI"); });
+    }
 
     @Override public void onMessage(String from,String message,String id){
         messages.add(message);
@@ -211,7 +215,12 @@ public class MainActivity extends Activity implements RealE2eeTransport.Listener
 
     @Override public void onDelivery(String id,String status){}
 
-    @Override public void onError(String message){}
+    @Override public void onError(String message){
+        runOnUiThread(()->{
+            if(connectionStatus!=null) connectionStatus.setText("● BAĞLANTI HATASI");
+            android.widget.Toast.makeText(this,message,android.widget.Toast.LENGTH_LONG).show();
+        });
+    }
 
     private void showChat(String peer){
         activePeer=peer; base(peer);
