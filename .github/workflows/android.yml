@@ -497,7 +497,8 @@ jobs:
                           Base64.encodeToString(baseKey.serialize(), Base64.NO_WRAP));
                   try {
                       if (get(marker) != null) throw new ReusedBaseKeyException("Kyber pre-key reuse detected");
-                      super.markKyberPreKeyUsed(id, signedId, baseKey);
+                      // Persistent storage is authoritative; the libsignal in-memory Kyber map
+                      // is not initialized in this store implementation, so never call super here.
                       put(marker, new byte[]{1});
                   } catch (ReusedBaseKeyException e) { throw e; }
                     catch (Exception e) { throw new IllegalStateException("Kyber replay-state write failed", e); }
