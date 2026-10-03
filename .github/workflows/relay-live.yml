@@ -55,7 +55,7 @@ jobs:
             await waitFor(A.messages, m => m.type === 'registered', 'A registered');
             await waitFor(B.messages, m => m.type === 'registered', 'B registered');
 
-            const id = 'live-smoke-20261003-001';
+            const id = 'live-smoke-20261003-' + Date.now();
             const payload = 'OPAQUE-CIPHERTEXT-TEST-' + Date.now();
             A.ws.send(JSON.stringify({
               type:'relay', id, to:'test-peer-B-20261003',
