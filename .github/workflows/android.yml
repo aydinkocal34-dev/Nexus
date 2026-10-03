@@ -613,7 +613,7 @@ jobs:
                   void onConnected();
                   void onPreKeyRequest(String id, String from, long expiresAt);
                   void onPreKey(String id, String from, String bundle, long expiresAt);
-                  void onCiphertext(String id, String from, byte[] ciphertext, int ciphertextType, long expiresAt);
+                  void onCiphertext(String id, String from, int fromDeviceId, byte[] ciphertext, int ciphertextType, long expiresAt);
                   void onDelivery(String id, String status);
                   void onError(String message);
                   void onClosed();
@@ -668,7 +668,8 @@ jobs:
                                   String from = msg.getString("from");
                                   byte[] ciphertext = Base64.getDecoder().decode(msg.getString("ciphertext"));
                                   long expiresAt = msg.getLong("expiresAt");
-                                  main.post(() -> listener.onCiphertext(id, from, ciphertext, msg.optInt("ciphertextType", 0), expiresAt));
+                                  int fromDeviceId = msg.optInt("fromDeviceId", 1);
+                                  main.post(() -> listener.onCiphertext(id, from, fromDeviceId, ciphertext, msg.optInt("ciphertextType", 0), expiresAt));
                               } else if ("prekey".equals(type)) {
                                   String id = msg.getString("id");
                                   String from = msg.getString("from");
@@ -698,10 +699,10 @@ jobs:
               }
 
               public boolean sendCiphertext(String id, String toPeerId, byte[] ciphertext, long ttlMs) {
-                  return sendCiphertext(id, toPeerId, ciphertext, 0, ttlMs);
+                  return sendCiphertext(id, toPeerId, ciphertext, 0, 1, ttlMs);
               }
 
-              public boolean sendCiphertext(String id, String toPeerId, byte[] ciphertext, int ciphertextType, long ttlMs) {
+              public boolean sendCiphertext(String id, String toPeerId, byte[] ciphertext, int ciphertextType, int fromDeviceId, long ttlMs) {
                   if (socket == null) return false;
                   try {
                       JSONObject msg = new JSONObject();
@@ -710,6 +711,7 @@ jobs:
                       msg.put("to", toPeerId);
                       msg.put("ciphertext", Base64.getEncoder().encodeToString(ciphertext));
                       msg.put("ciphertextType", ciphertextType);
+                      msg.put("fromDeviceId", fromDeviceId);
                       msg.put("ttlMs", Math.max(1000L, ttlMs));
                       return socket.send(msg.toString());
                   } catch (Exception e) {
@@ -970,17 +972,15 @@ jobs:
           }
           EOF
 
-          cat > app/src/main/java/com/nexus/app/RealE2eeTransport.java <<'EOF'
+                    cat > app/src/main/java/com/nexus/app/RealE2eeTransport.java <<'EOF'
           package com.nexus.app;
 
           import android.content.Context;
           import java.nio.charset.StandardCharsets;
+          import java.util.ArrayList;
+          import java.util.List;
           import java.util.UUID;
 
-          /**
-           * Connects libsignal sessions to the blind relay.
-           * Plaintext enters only encrypt()/decrypt() and never RelayClient.
-           */
           public final class RealE2eeTransport implements RelayClient.Listener {
               public interface Listener {
                   void onReady();
@@ -988,88 +988,59 @@ jobs:
                   void onDelivery(String id, String status);
                   void onError(String message);
               }
-
+              private static final class Pending {
+                  final String id, peerId, text;
+                  final int deviceId;
+                  Pending(String id,String peerId,int deviceId,String text){this.id=id;this.peerId=peerId;this.deviceId=deviceId;this.text=text;}
+              }
               private final DeviceE2eeController e2ee;
               private final RelayClient relay;
-              private final String localPeerId;
               private final int localDeviceId;
-              private Listener listener;
+              private final Listener listener;
+              private final List<Pending> pending=new ArrayList<>();
 
-              public RealE2eeTransport(Context context, String localPeerId, int localDeviceId, Listener listener) throws Exception {
-                  if (localPeerId == null || localPeerId.length() < 8) throw new IllegalArgumentException("Invalid local peer ID");
-                  this.localPeerId = localPeerId;
-                  this.localDeviceId = localDeviceId;
-                  this.listener = listener;
-                  this.e2ee = new DeviceE2eeController(context, localPeerId, localDeviceId);
-                  this.relay = new RelayClient(this);
+              public RealE2eeTransport(Context context,String localPeerId,int localDeviceId,Listener listener)throws Exception{
+                  if(localPeerId==null||localPeerId.length()<8)throw new IllegalArgumentException("Invalid local peer ID");
+                  this.localDeviceId=localDeviceId; this.listener=listener;
+                  this.e2ee=new DeviceE2eeController(context,localPeerId,localDeviceId);
+                  this.relay=new RelayClient(this);
               }
-
-              public void connect(String wssUrl) {
-                  relay.connect(wssUrl, localPeerId);
+              public void connect(String wssUrl){relay.connect(wssUrl,e2ee.getLocalPeerId());}
+              public void requestSession(String remotePeerId){relay.requestPreKey(UUID.randomUUID().toString(),remotePeerId,60000L);}
+              public synchronized String sendText(String remotePeerId,int remoteDeviceId,String text){
+                  String id=UUID.randomUUID().toString();
+                  try{
+                      DeviceE2eeController.CipherPacket p=e2ee.encrypt(remotePeerId,remoteDeviceId,text.getBytes(StandardCharsets.UTF_8));
+                      relay.sendCiphertext(id,remotePeerId,p.bytes,p.type,localDeviceId,60000L);
+                  }catch(Exception ex){pending.add(new Pending(id,remotePeerId,remoteDeviceId,text));requestSession(remotePeerId);}
+                  return id;
               }
-
-              public void requestSession(String remotePeerId) {
-                  relay.requestPreKey(UUID.randomUUID().toString(), remotePeerId, 60_000L);
-              }
-
-              public void sendText(String remotePeerId, int remoteDeviceId, String text) {
-                  try {
-                      DeviceE2eeController.CipherPacket packet = e2ee.encrypt(
-                              remotePeerId, remoteDeviceId, text.getBytes(StandardCharsets.UTF_8));
-                      relay.sendCiphertext(UUID.randomUUID().toString(), remotePeerId,
-                              packet.bytes, packet.type, 60_000L);
-                  } catch (Exception e) {
-                      listener.onError("E2EE encrypt failed: " + e.getMessage());
+              private synchronized void flushPending(String peerId,int deviceId){
+                  for(int i=pending.size()-1;i>=0;i--){
+                      Pending p=pending.get(i); if(!p.peerId.equals(peerId)||p.deviceId!=deviceId)continue;
+                      try{
+                          DeviceE2eeController.CipherPacket cp=e2ee.encrypt(p.peerId,p.deviceId,p.text.getBytes(StandardCharsets.UTF_8));
+                          relay.sendCiphertext(p.id,p.peerId,cp.bytes,cp.type,localDeviceId,60000L); pending.remove(i);
+                      }catch(Exception ex){listener.onError("E2EE pending send failed: "+ex.getMessage());}
                   }
               }
-
-              public void close() {
-                  relay.close();
+              public void close(){relay.close();}
+              @Override public void onConnected(){listener.onReady();}
+              @Override public void onPreKeyRequest(String id,String from,long expiresAt){
+                  try{SignalPreKeyEnvelope b=e2ee.createLocalPreKeyBundle();relay.sendPreKey(id,from,b.encode(),60000L);}
+                  catch(Exception e){listener.onError("Pre-key generation failed: "+e.getMessage());}
               }
-
-              @Override public void onConnected() { listener.onReady(); }
-
-              @Override public void onPreKeyRequest(String id, String from, long expiresAt) {
-                  try {
-                      SignalPreKeyEnvelope bundle = e2ee.createLocalPreKeyBundle();
-                      relay.sendPreKey(id, from, bundle.encode(), 60_000L);
-                  } catch (Exception e) {
-                      listener.onError("Pre-key generation failed: " + e.getMessage());
-                  }
+              @Override public void onPreKey(String id,String from,String bundle,long expiresAt){
+                  try{SignalPreKeyEnvelope e=SignalPreKeyEnvelope.decode(bundle);e2ee.establishSession(from,e.deviceId,e);flushPending(from,e.deviceId);listener.onReady();}
+                  catch(Exception e){listener.onError("E2EE session setup failed: "+e.getMessage());}
               }
-
-              @Override public void onPreKey(String id, String from, String bundle, long expiresAt) {
-                  try {
-                      SignalPreKeyEnvelope envelope = SignalPreKeyEnvelope.decode(bundle);
-                      e2ee.establishSession(from, envelope.deviceId, envelope);
-                      listener.onReady();
-                  } catch (Exception e) {
-                      listener.onError("E2EE session setup failed: " + e.getMessage());
-                  }
+              @Override public void onCiphertext(String id,String from,int fromDeviceId,byte[] ciphertext,int type,long expiresAt){
+                  try{byte[] clear=e2ee.decrypt(from,fromDeviceId,type,ciphertext);listener.onMessage(from,new String(clear,StandardCharsets.UTF_8),id);relay.sendReadReceipt(id,from);}
+                  catch(Exception e){listener.onError("E2EE decrypt failed: "+e.getMessage());}
               }
-
-              @Override public void onCiphertext(String id, String from, byte[] ciphertext, int type, long expiresAt) {
-                  try {
-                      // The relay supplies only opaque bytes; libsignal performs authentication/decryption here.
-                      byte[] clear = e2ee.decrypt(from, 1, type, ciphertext);
-                      listener.onMessage(from, new String(clear, StandardCharsets.UTF_8), id);
-                      relay.sendReadReceipt(id, from);
-                  } catch (Exception e) {
-                      listener.onError("E2EE decrypt failed: " + e.getMessage());
-                  }
-              }
-
-              @Override public void onDelivery(String id, String status) {
-                  listener.onDelivery(id, status);
-              }
-
-              @Override public void onError(String message) {
-                  listener.onError(message);
-              }
-
-              @Override public void onClosed() {
-                  listener.onError("Relay connection closed");
-              }
+              @Override public void onDelivery(String id,String status){listener.onDelivery(id,status);}
+              @Override public void onError(String message){listener.onError(message);}
+              @Override public void onClosed(){listener.onError("Relay connection closed");}
           }
           EOF
 
@@ -1109,7 +1080,7 @@ jobs:
               private final List<String> messages=new ArrayList<>();
               private String activePeer="";
               private String localPeerId="";
-              private String relayWss="";
+              private String relayWss="wss://nexus-blind-relay.onrender.com";
               private RealE2eeTransport transport;
               private final Handler handler=new Handler();
               private static final String PREFS="nexus_runtime";
