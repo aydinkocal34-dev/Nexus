@@ -1872,7 +1872,18 @@ jobs:
           fi
           echo "ADB device connected. Waiting for Android boot completion..."
           for i in $(seq 1 120); do
-            if adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' | grep -q '^1
+            if adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' | grep -q '^1$'; then
+              echo "Android boot completed."
+              break
+            fi
+            if [ "$i" -eq 120 ]; then
+              echo "Android emulator did not finish booting."
+              cat /tmp/nexus-emulator.log || true
+              adb logcat -d -t 300 || true
+              exit 1
+            fi
+            sleep 2
+          done
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
