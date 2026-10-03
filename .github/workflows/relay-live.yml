@@ -73,7 +73,7 @@ jobs:
               ciphertext:Buffer.from(payload).toString('base64'), ciphertextType:1,
               fromDeviceId:1, ttlMs:60000
             }));
-            await waitFor(A.messages, m => m.type === 'delivery' && m.id === id && m.status === 'replay', 'replay rejection');
+            await waitFor(A.messages, m => m.type === 'error' && m.code === 'REPLAY_ID', 'replay rejection');
 
             A.ws.send(JSON.stringify({
               type:'relay', id:'offline-001', to:'test-peer-OFFLINE-20261003',
