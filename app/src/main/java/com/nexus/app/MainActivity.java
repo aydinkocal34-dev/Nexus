@@ -35,7 +35,7 @@ public final class MainActivity extends Activity {
         return v;
     }
 
-    private TextView tile(String icon, String title, String subtitle) {
+    private LinearLayout tile(String icon, String title, String subtitle) {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER);
@@ -127,15 +127,13 @@ public final class MainActivity extends Activity {
 
         LinearLayout tiles = new LinearLayout(this);
         tiles.setOrientation(LinearLayout.HORIZONTAL);
-        TextView messages = tile("✉", "Mesajlar", "Sohbetler");
-        TextView contacts = tile("♟", "Kişiler", "Rehber");
-        TextView security = tile("◆", "Güvenlik", "Kontrol");
+        LinearLayout messages = tile("✉", "Mesajlar", "Sohbetler");
+        LinearLayout contacts = tile("♟", "Kişiler", "Rehber");
+        LinearLayout security = tile("◆", "Güvenlik", "Kontrol");
         tiles.addView(messages, new LinearLayout.LayoutParams(0, 128, 1f));
-        LinearLayout spacer1 = new LinearLayout(this);
-        tiles.addView(spacer1, new LinearLayout.LayoutParams(10, 1));
+        tiles.addView(new View(this), new LinearLayout.LayoutParams(10, 1));
         tiles.addView(contacts, new LinearLayout.LayoutParams(0, 128, 1f));
-        LinearLayout spacer2 = new LinearLayout(this);
-        tiles.addView(spacer2, new LinearLayout.LayoutParams(10, 1));
+        tiles.addView(new View(this), new LinearLayout.LayoutParams(10, 1));
         tiles.addView(security, new LinearLayout.LayoutParams(0, 128, 1f));
         root.addView(tiles);
 
@@ -156,8 +154,9 @@ public final class MainActivity extends Activity {
         View.OnClickListener action = new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                TextView clicked = (TextView) v;
-                info.setText(clicked.getText() + "\n\nArayüz testi başarılı.");
+                info.setText(((LinearLayout) v).getChildAt(1) instanceof TextView
+                        ? ((TextView) ((LinearLayout) v).getChildAt(1)).getText() + "\n\nArayüz testi başarılı."
+                        : "NEXUS\n\nArayüz testi başarılı.");
             }
         };
 
