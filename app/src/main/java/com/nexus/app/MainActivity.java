@@ -8,10 +8,12 @@ import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
-import android.view.WindowInsets;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 public final class MainActivity extends Activity {
     private static final int BG = Color.rgb(4, 13, 25);
@@ -81,16 +83,15 @@ public final class MainActivity extends Activity {
 
         final LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(20, 16, 20, 24);
+        root.setPadding(20, 24, 20, 24);
 
-        scroll.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
-            @Override
-            public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
-                int top = insets.getSystemWindowInsetTop();
-                int bottom = insets.getSystemWindowInsetBottom();
-                root.setPadding(20, top + 16, 20, bottom + 24);
-                return insets;
-            }
+        // Android 15/16 enforces edge-to-edge for targetSdk 35.
+        // Read the real system-bar insets so content never sits underneath
+        // the clock/status icons or the navigation gesture area.
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(20, bars.top + 24, 20, bars.bottom + 24);
+            return insets;
         });
 
         LinearLayout header = new LinearLayout(this);
