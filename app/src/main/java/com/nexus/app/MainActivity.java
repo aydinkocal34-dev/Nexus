@@ -131,22 +131,22 @@ public final class MainActivity extends Activity {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER);
-        box.setPadding(8, 8, 8, 8);
+        box.setPadding(6, 5, 6, 5);
         box.setBackground(bg(CARD, 20));
 
         ImageView icon = new ImageView(this);
         icon.setImageResource(iconRes);
         icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         icon.setBackground(bg(Color.rgb(14, 40, 72), 30));
-        box.addView(icon, new LinearLayout.LayoutParams(54, 54));
+        box.addView(icon, new LinearLayout.LayoutParams(42, 42));
 
-        TextView nameView = text(name, 15, TEXT);
+        TextView nameView = text(name, 16, TEXT);
         nameView.setGravity(Gravity.CENTER);
         nameView.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        nameView.setPadding(0, 5, 0, 0);
+        nameView.setPadding(0, 2, 0, 0);
         box.addView(nameView, new LinearLayout.LayoutParams(-1, -2));
 
-        TextView subView = text(sub, 10, MUTED);
+        TextView subView = text(sub, 11, MUTED);
         subView.setGravity(Gravity.CENTER);
         subView.setMaxLines(1);
         box.addView(subView, new LinearLayout.LayoutParams(-1, -2));
@@ -190,13 +190,13 @@ public final class MainActivity extends Activity {
         TextView glow = text("✦", 110, Color.rgb(12, 88, 170));
         glow.setGravity(Gravity.CENTER);
         glow.setAlpha(0.18f);
-        logoFrame.addView(glow, new FrameLayout.LayoutParams(210, 190, Gravity.CENTER));
+        logoFrame.addView(glow, new FrameLayout.LayoutParams(165, 145, Gravity.CENTER));
 
         ImageView logo = new ImageView(this);
         logo.setImageResource(R.drawable.nexus_logo);
         logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        logoFrame.addView(logo, new FrameLayout.LayoutParams(190, 190, Gravity.CENTER));
-        logoBlock.addView(logoFrame, new LinearLayout.LayoutParams(220, 190));
+        logoFrame.addView(logo, new FrameLayout.LayoutParams(145, 145, Gravity.CENTER));
+        logoBlock.addView(logoFrame, new LinearLayout.LayoutParams(180, 148));
 
         TextView safeTitle = text("Güvenli İletişim", 17, TEXT);
         safeTitle.setGravity(Gravity.CENTER);
@@ -207,13 +207,13 @@ public final class MainActivity extends Activity {
         safeSub.setGravity(Gravity.CENTER);
         logoBlock.addView(safeSub, new LinearLayout.LayoutParams(-1, 28));
 
-        root.addView(logoBlock, new LinearLayout.LayoutParams(-1, 248));
+        root.addView(logoBlock, new LinearLayout.LayoutParams(-1, 208));
 
         // Reference 2x2 premium cards
         LinearLayout row1 = new LinearLayout(this);
         row1.setGravity(Gravity.CENTER);
         row1.addView(tile(R.drawable.ic_chat, "Sohbet", "Güvenli mesajlaş", v -> showNewChat()),
-                new LinearLayout.LayoutParams(0, 184, 1));
+                new LinearLayout.LayoutParams(0, 120, 1));
         row1.addView(new View(this), new LinearLayout.LayoutParams(14, 1));
         row1.addView(tile(R.drawable.ic_people, "Kişiler", "NEXUS ID ekle", v -> showNewChat()),
                 new LinearLayout.LayoutParams(0, 184, 1));
@@ -256,7 +256,7 @@ public final class MainActivity extends Activity {
                 canvas.drawPath(p2, p);
             }
         };
-        root.addView(wave, new LinearLayout.LayoutParams(-1, 105));
+        root.addView(wave, new LinearLayout.LayoutParams(-1, 72));
 
         root.addView(new View(this), new LinearLayout.LayoutParams(-1, 0, 1));
 
@@ -284,7 +284,7 @@ public final class MainActivity extends Activity {
     }
 
     private TextView navItem(String icon, String label, int color) {
-        TextView v = text(icon + "\\n" + label, 10, color);
+        TextView v = text(icon + "\n" + label, 10, color);
         v.setGravity(Gravity.CENTER);
         v.setIncludeFontPadding(true);
         return v;
