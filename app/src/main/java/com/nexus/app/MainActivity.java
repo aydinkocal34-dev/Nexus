@@ -35,7 +35,7 @@ public class MainActivity extends Activity {
     private String localPeerId="";
     private String relayWss="wss://nexus-blind-relay.onrender.com";
     private TextView connectionStatus;
-    private E2eeRuntime e2eeRuntime;
+    private E2eeBridge e2eeRuntime;
     private final android.os.Handler handler=new android.os.Handler();
     private static final String PREFS="nexus_runtime";
     private static final String CHANNEL="nexus_messages";
@@ -76,7 +76,7 @@ public class MainActivity extends Activity {
     private boolean ensureTransport(){
         if(e2eeRuntime!=null) return true;
         try {
-            e2eeRuntime=new E2eeRuntime(this,localPeerId,new E2eeRuntime.Listener(){
+            e2eeRuntime=new E2eeBridge(this,localPeerId,new E2eeBridge.Listener(){
                 @Override public void onReady(){runOnUiThread(()->{if(connectionStatus!=null)connectionStatus.setText("● GÜVENLİ BAĞLI");});}
                 @Override public void onMessage(String from,String message,String id){runOnUiThread(()->MainActivity.this.onIncomingMessage(from,message,id));}
                 @Override public void onError(String message){runOnUiThread(()->MainActivity.this.onTransportError(message));}
