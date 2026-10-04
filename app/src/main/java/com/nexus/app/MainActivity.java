@@ -7,6 +7,8 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowInsets;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -32,7 +34,7 @@ public final class MainActivity extends Activity {
         v.setText(text);
         v.setTextSize(size);
         v.setTextColor(color);
-        v.setIncludeFontPadding(true);
+        v.setIncludeFontPadding(false);
         return v;
     }
 
@@ -40,127 +42,156 @@ public final class MainActivity extends Activity {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER);
-        box.setPadding(8, 12, 8, 12);
-        box.setBackground(rounded(CARD_2, 24f));
+        box.setPadding(8, 14, 8, 14);
+        box.setBackground(rounded(CARD_2, 22f));
 
-        TextView i = label(icon, 23f, TEXT);
+        TextView i = label(icon, 22f, TEXT);
         i.setGravity(Gravity.CENTER);
-        box.addView(i, new LinearLayout.LayoutParams(-1, 36));
+        box.addView(i, new LinearLayout.LayoutParams(-1, 30));
 
         TextView t = label(title, 14f, TEXT);
         t.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         t.setGravity(Gravity.CENTER);
-        box.addView(t, new LinearLayout.LayoutParams(-1, 30));
+        box.addView(t, new LinearLayout.LayoutParams(-1, 24));
 
         TextView s = label(subtitle, 11f, MUTED);
         s.setGravity(Gravity.CENTER);
-        box.addView(s, new LinearLayout.LayoutParams(-1, 26));
+        box.addView(s, new LinearLayout.LayoutParams(-1, 20));
 
         return box;
+    }
+
+    private LinearLayout.LayoutParams matchWrap() {
+        return new LinearLayout.LayoutParams(-1, -2);
     }
 
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
-        getWindow().setStatusBarColor(BG);
-        getWindow().setNavigationBarColor(BG);
 
-        ScrollView scroll = new ScrollView(this);
+        Window window = getWindow();
+        window.setStatusBarColor(BG);
+        window.setNavigationBarColor(BG);
+        window.getDecorView().setSystemUiVisibility(0);
+
+        final ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         scroll.setBackgroundColor(BG);
         scroll.setClipToPadding(false);
 
-        LinearLayout root = new LinearLayout(this);
+        final LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        // Extra top space keeps the header clear of Android's status bar/edge-to-edge area.
-        root.setPadding(24, 58, 24, 28);
+        root.setPadding(20, 16, 20, 24);
+
+        scroll.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            @Override
+            public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
+                int top = insets.getSystemWindowInsetTop();
+                int bottom = insets.getSystemWindowInsetBottom();
+                root.setPadding(20, top + 16, 20, bottom + 24);
+                return insets;
+            }
+        });
 
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(0, 0, 0, 8);
 
-        TextView brand = label("NEXUS", 30f, TEXT);
+        TextView brand = label("NEXUS", 28f, TEXT);
         brand.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         brand.setGravity(Gravity.CENTER_VERTICAL);
-        header.addView(brand, new LinearLayout.LayoutParams(0, 58, 1f));
+        header.addView(brand, new LinearLayout.LayoutParams(0, 44, 1f));
 
-        TextView profile = label("●", 23f, ACCENT);
+        TextView profile = label("●", 20f, ACCENT);
         profile.setGravity(Gravity.CENTER);
-        profile.setBackground(rounded(CARD_2, 40f));
-        header.addView(profile, new LinearLayout.LayoutParams(52, 52));
-        root.addView(header, new LinearLayout.LayoutParams(-1, 58));
+        profile.setBackground(rounded(CARD_2, 30f));
+        header.addView(profile, new LinearLayout.LayoutParams(46, 46));
+        root.addView(header, matchWrap());
 
         TextView subtitle = label("Güvenli iletişimin yeni nesli", 15f, MUTED);
         subtitle.setGravity(Gravity.CENTER_VERTICAL);
-        root.addView(subtitle, new LinearLayout.LayoutParams(-1, 42));
+        root.addView(subtitle, matchWrap());
 
-        LinearLayout statusCard = new LinearLayout(this);
+        final LinearLayout statusCard = new LinearLayout(this);
         statusCard.setOrientation(LinearLayout.VERTICAL);
-        statusCard.setPadding(22, 18, 22, 18);
-        statusCard.setBackground(rounded(CARD, 28f));
+        statusCard.setPadding(18, 16, 18, 16);
+        statusCard.setBackground(rounded(CARD, 24f));
+        LinearLayout.LayoutParams statusParams = matchWrap();
+        statusParams.topMargin = 14;
+        root.addView(statusCard, statusParams);
 
         LinearLayout statusLine = new LinearLayout(this);
         statusLine.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView dot = label("●", 15f, SUCCESS);
+        TextView dot = label("●", 14f, SUCCESS);
         dot.setGravity(Gravity.CENTER);
-        statusLine.addView(dot, new LinearLayout.LayoutParams(28, 34));
+        statusLine.addView(dot, new LinearLayout.LayoutParams(24, 30));
 
-        TextView ready = label("NEXUS hazır", 19f, TEXT);
+        TextView ready = label("NEXUS hazır", 18f, TEXT);
         ready.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         ready.setGravity(Gravity.CENTER_VERTICAL);
-        statusLine.addView(ready, new LinearLayout.LayoutParams(0, 34, 1f));
+        statusLine.addView(ready, new LinearLayout.LayoutParams(0, 30, 1f));
 
         TextView badge = label("AKTİF", 10f, SUCCESS);
         badge.setGravity(Gravity.CENTER);
-        badge.setBackground(rounded(Color.rgb(19, 64, 48), 18f));
-        statusLine.addView(badge, new LinearLayout.LayoutParams(66, 32));
-        statusCard.addView(statusLine, new LinearLayout.LayoutParams(-1, 34));
+        badge.setBackground(rounded(Color.rgb(19, 64, 48), 16f));
+        statusLine.addView(badge, new LinearLayout.LayoutParams(62, 30));
+        statusCard.addView(statusLine, matchWrap());
 
         TextView statusDetail = label("Bağlantı kurulmaya hazır.", 14f, MUTED);
         statusDetail.setGravity(Gravity.CENTER_VERTICAL);
-        statusCard.addView(statusDetail, new LinearLayout.LayoutParams(-1, 38));
+        LinearLayout.LayoutParams detailParams = matchWrap();
+        detailParams.topMargin = 8;
+        statusCard.addView(statusDetail, detailParams);
 
         TextView start = label("NEXUS'A BAŞLA", 16f, TEXT);
         start.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         start.setGravity(Gravity.CENTER);
-        start.setBackground(rounded(ACCENT, 22f));
-        statusCard.addView(start, new LinearLayout.LayoutParams(-1, 56));
-
-        root.addView(statusCard, new LinearLayout.LayoutParams(-1, 146));
+        start.setBackground(rounded(ACCENT, 20f));
+        LinearLayout.LayoutParams startParams = matchWrap();
+        startParams.topMargin = 12;
+        statusCard.addView(start, startParams);
+        start.setPadding(0, 15, 0, 15);
 
         TextView quickTitle = label("HIZLI ERİŞİM", 12f, MUTED);
         quickTitle.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         quickTitle.setGravity(Gravity.CENTER_VERTICAL);
-        quickTitle.setPadding(6, 10, 0, 4);
-        root.addView(quickTitle, new LinearLayout.LayoutParams(-1, 44));
+        quickTitle.setPadding(4, 16, 0, 8);
+        root.addView(quickTitle, matchWrap());
 
         LinearLayout tiles = new LinearLayout(this);
         tiles.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout messages = tile("✉", "Mesajlar", "Sohbetler");
         LinearLayout contacts = tile("♟", "Kişiler", "Rehber");
         LinearLayout security = tile("◆", "Güvenlik", "Kontrol");
-        tiles.addView(messages, new LinearLayout.LayoutParams(0, 124, 1f));
-        tiles.addView(new View(this), new LinearLayout.LayoutParams(8, 1));
-        tiles.addView(contacts, new LinearLayout.LayoutParams(0, 124, 1f));
-        tiles.addView(new View(this), new LinearLayout.LayoutParams(8, 1));
-        tiles.addView(security, new LinearLayout.LayoutParams(0, 124, 1f));
-        root.addView(tiles, new LinearLayout.LayoutParams(-1, 124));
+        tiles.addView(messages, new LinearLayout.LayoutParams(0, -2, 1f));
+        View gap1 = new View(this);
+        tiles.addView(gap1, new LinearLayout.LayoutParams(7, 1));
+        tiles.addView(contacts, new LinearLayout.LayoutParams(0, -2, 1f));
+        View gap2 = new View(this);
+        tiles.addView(gap2, new LinearLayout.LayoutParams(7, 1));
+        tiles.addView(security, new LinearLayout.LayoutParams(0, -2, 1f));
+        root.addView(tiles, matchWrap());
 
         TextView infoTitle = label("NEXUS", 12f, MUTED);
         infoTitle.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        infoTitle.setGravity(Gravity.CENTER_VERTICAL);
-        infoTitle.setPadding(6, 8, 0, 2);
-        root.addView(infoTitle, new LinearLayout.LayoutParams(-1, 38));
+        infoTitle.setPadding(4, 16, 0, 8);
+        root.addView(infoTitle, matchWrap());
 
-        TextView info = label("Özel iletişim alanın hazır.\nYeni özellikler güvenli şekilde katman katman eklenecek.", 14f, MUTED);
+        final TextView info = label(
+                "Özel iletişim alanın hazır.\nYeni özellikler güvenli şekilde katman katman eklenecek.",
+                14f, MUTED);
         info.setGravity(Gravity.CENTER_VERTICAL);
-        info.setPadding(18, 10, 18, 10);
-        info.setBackground(rounded(CARD, 22f));
-        root.addView(info, new LinearLayout.LayoutParams(-1, 76));
+        info.setPadding(16, 14, 16, 14);
+        info.setBackground(rounded(CARD, 20f));
+        root.addView(info, matchWrap());
 
         TextView footer = label("NEXUS  •  v0.22.2", 12f, MUTED);
         footer.setGravity(Gravity.CENTER);
-        root.addView(footer, new LinearLayout.LayoutParams(-1, 50));
+        LinearLayout.LayoutParams footerParams = matchWrap();
+        footerParams.topMargin = 14;
+        footerParams.bottomMargin = 8;
+        root.addView(footer, footerParams);
 
         View.OnClickListener action = new View.OnClickListener() {
             @Override
@@ -182,5 +213,6 @@ public final class MainActivity extends Activity {
 
         scroll.addView(root);
         setContentView(scroll);
+        scroll.requestApplyInsets();
     }
 }
