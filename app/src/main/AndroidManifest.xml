@@ -12,7 +12,8 @@
         android:label="NEXUS"
         android:allowBackup="false"
         android:icon="@drawable/nexus_logo"
-        android:roundIcon="@drawable/nexus_logo">
+        android:roundIcon="@drawable/nexus_logo"
+        android:extractNativeLibs="true">
 
         <activity
             android:name=".MainActivity"
