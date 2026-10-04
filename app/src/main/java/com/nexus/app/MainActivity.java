@@ -407,6 +407,19 @@ public final class MainActivity extends Activity {
         send.setGravity(Gravity.CENTER);
         send.setBackground(bg(BLUE, 30));
         composer.addView(send, new LinearLayout.LayoutParams(54, 54));
+        send.setOnClickListener(v -> {
+            String msg = input.getText().toString().trim();
+            if (!msg.isEmpty()) {
+                TextView sent = text(msg + "\\nşimdi  ✓", 14, TEXT);
+                sent.setPadding(14, 12, 14, 12);
+                sent.setBackground(bg(BLUE, 16));
+                LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-2, -2);
+                sp.gravity = Gravity.RIGHT;
+                sp.topMargin = 10;
+                messages.addView(sent, sp);
+                input.setText("");
+            }
+        });
         p.addView(composer);
         clearAndShow(p);
     }
