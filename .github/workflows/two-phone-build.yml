@@ -39,9 +39,10 @@ jobs:
           APK=$(find app/build/outputs/apk/debug -name 'app-arm64-v8a-debug.apk' | head -1)
           test -n "$APK"
           cp "$APK" dist/NEXUS-0.22.2-arm64.apk
-          shasum -a 256 dist/NEXUS-0.22.0-arm64.apk
+          test -s dist/NEXUS-0.22.2-arm64.apk
+          shasum -a 256 dist/NEXUS-0.22.2-arm64.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: NEXUS-two-phone-arm64
-          path: dist/NEXUS-0.22.0-arm64.apk
+          path: dist/NEXUS-0.22.2-arm64.apk
