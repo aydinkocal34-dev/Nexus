@@ -56,7 +56,7 @@ public final class MainActivity extends Activity {
     private LinearLayout screen() {
         LinearLayout s = new LinearLayout(this);
         s.setOrientation(LinearLayout.VERTICAL);
-        s.setPadding(16, 14, 16, 28);
+        s.setPadding(16, 12, 16, 20);
         return s;
     }
 
@@ -130,18 +130,18 @@ public final class MainActivity extends Activity {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER);
-        box.setPadding(8, 14, 8, 14);
+        box.setPadding(8, 12, 8, 12);
         box.setBackground(bg(CARD, 18));
         TextView i = text(icon, 27, BLUE);
         i.setGravity(Gravity.CENTER);
-        box.addView(i, new LinearLayout.LayoutParams(-1, 38));
+        box.addView(i, new LinearLayout.LayoutParams(-1, 34));
         TextView n = text(name, 15, TEXT);
         n.setGravity(Gravity.CENTER);
         n.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        box.addView(n, new LinearLayout.LayoutParams(-1, 28));
+        box.addView(n, new LinearLayout.LayoutParams(-1, -2));
         TextView s = text(sub, 11, MUTED);
         s.setGravity(Gravity.CENTER);
-        box.addView(s, new LinearLayout.LayoutParams(-1, 24));
+        box.addView(s, new LinearLayout.LayoutParams(-1, -2));
         box.setOnClickListener(click);
         return box;
     }
@@ -185,16 +185,16 @@ public final class MainActivity extends Activity {
         ImageView logo = new ImageView(this);
         logo.setImageResource(com.nexus.app.R.drawable.nexus_logo);
         logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        heroTop.addView(logo, new LinearLayout.LayoutParams(64, 64));
+        heroTop.addView(logo, new LinearLayout.LayoutParams(56, 56));
 
         LinearLayout heroText = new LinearLayout(this);
         heroText.setOrientation(LinearLayout.VERTICAL);
         heroText.setPadding(14, 0, 0, 0);
         TextView welcome = text("NEXUS'a hoş geldin", 18, TEXT);
         welcome.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        heroText.addView(welcome);
-        heroText.addView(text("Özel ve güvenli iletişim alanın hazır.", 12, MUTED));
-        heroTop.addView(heroText, new LinearLayout.LayoutParams(0, 64, 1));
+        welcome.setMaxLines(1);\n        heroText.addView(welcome);
+        TextView heroSub = text("Özel ve güvenli iletişim alanın hazır.", 11, MUTED);\n        heroSub.setMaxLines(2);\n        heroText.addView(heroSub);
+        heroTop.addView(heroText, new LinearLayout.LayoutParams(0, 56, 1));
         hero.addView(heroTop);
 
         addSpace(hero, 12);
@@ -217,7 +217,7 @@ public final class MainActivity extends Activity {
 
         LinearLayout row1 = new LinearLayout(this);
         row1.addView(tile("✦", "Yeni sohbet", "Güvenli mesaj başlat", v -> showNewChat()),
-                new LinearLayout.LayoutParams(0, 126, 1));
+                new LinearLayout.LayoutParams(0, 118, 1));
         row1.addView(new View(this), new LinearLayout.LayoutParams(10, 1));
         row1.addView(tile("♙", "Kişiler", "NEXUS ID yönet", v -> showNewChat()),
                 new LinearLayout.LayoutParams(0, 126, 1));
@@ -255,27 +255,27 @@ public final class MainActivity extends Activity {
         addSpace(p, 14);
         LinearLayout nav = new LinearLayout(this);
         nav.setGravity(Gravity.CENTER);
-        nav.setPadding(6, 6, 6, 6);
+        nav.setPadding(6, 4, 6, 4);
         nav.setBackground(bg(PANEL, 20));
 
-        TextView home = text("⌂\nAna Sayfa", 11, BLUE);
+        TextView home = text("⌂\nAna Sayfa", 10, BLUE);
         home.setGravity(Gravity.CENTER);
-        nav.addView(home, new LinearLayout.LayoutParams(0, 58, 1));
+        nav.addView(home, new LinearLayout.LayoutParams(0, 66, 1));
 
-        TextView chats = text("◌\nSohbetler", 11, MUTED);
+        TextView chats = text("◌\nSohbetler", 10, MUTED);
         chats.setGravity(Gravity.CENTER);
         chats.setOnClickListener(v -> showNewChat());
-        nav.addView(chats, new LinearLayout.LayoutParams(0, 58, 1));
+        nav.addView(chats, new LinearLayout.LayoutParams(0, 66, 1));
 
-        TextView people = text("♙\nKişiler", 11, MUTED);
+        TextView people = text("♙\nKişiler", 10, MUTED);
         people.setGravity(Gravity.CENTER);
         people.setOnClickListener(v -> showNewChat());
-        nav.addView(people, new LinearLayout.LayoutParams(0, 58, 1));
+        nav.addView(people, new LinearLayout.LayoutParams(0, 66, 1));
 
-        TextView settings = text("⚙\nAyarlar", 11, MUTED);
+        TextView settings = text("⚙\nAyarlar", 10, MUTED);
         settings.setGravity(Gravity.CENTER);
         settings.setOnClickListener(v -> showPrivacy());
-        nav.addView(settings, new LinearLayout.LayoutParams(0, 58, 1));
+        nav.addView(settings, new LinearLayout.LayoutParams(0, 66, 1));
         p.addView(nav);
 
         clearAndShow(p);
