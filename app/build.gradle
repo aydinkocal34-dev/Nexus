@@ -13,8 +13,8 @@ android {
         minSdk 26
         targetSdk 35
 
-        versionCode 29
-        versionName '0.22.0-live-chat'
+        versionCode 30
+        versionName '0.22.1-live-chat'
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
@@ -33,6 +33,17 @@ android {
             reset()
             include "arm64-v8a"
             universalApk false
+        }
+    }
+
+    // libsignal-client ships desktop/testing native artifacts in its Maven package.
+    // They are not used by the Android app and make the sideloaded APK unnecessarily huge.
+    packaging {
+        jniLibs {
+            excludes += ["**/*_testing*"]
+        }
+        resources {
+            excludes += ["**/*.dylib", "**/*.dll", "**/*_testing*"]
         }
     }
 }
