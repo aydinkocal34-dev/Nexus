@@ -58,11 +58,36 @@ public final class MainActivity extends Activity {
         if(sub!=null&&!sub.isEmpty())p.addView(text(sub,13,MUTED),new LinearLayout.LayoutParams(-1,-2));
     }
     private LinearLayout tile(int res,String name,String sub,View.OnClickListener l){
-        LinearLayout b=new LinearLayout(this);b.setOrientation(LinearLayout.VERTICAL);b.setGravity(Gravity.CENTER);b.setPadding(6,5,6,5);b.setBackground(bg(CARD,20));b.setOnClickListener(l);
-        ImageView i=new ImageView(this);i.setImageResource(res);i.setScaleType(ImageView.ScaleType.CENTER_INSIDE);i.setBackground(bg(Color.rgb(14,40,72),30));b.addView(i,new LinearLayout.LayoutParams(46,46));
-        TextView n=text(name,16,TEXT);n.setGravity(Gravity.CENTER);n.setTypeface(Typeface.DEFAULT,Typeface.BOLD);b.addView(n,new LinearLayout.LayoutParams(-1,-2));
-        TextView q=text(sub,11,MUTED);q.setGravity(Gravity.CENTER);b.addView(q,new LinearLayout.LayoutParams(-1,-2));return b;
+        LinearLayout box=new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.CENTER_VERTICAL);
+        box.setPadding(16,10,14,10);
+        box.setBackground(bg(CARD,22));
+        box.setOnClickListener(l);
+
+        LinearLayout top=new LinearLayout(this);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+
+        ImageView icon=new ImageView(this);
+        icon.setImageResource(res);
+        icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        icon.setBackground(bg(Color.rgb(10,35,65),30));
+        top.addView(icon,new LinearLayout.LayoutParams(50,50));
+
+        TextView chevron=text("›",34,Color.rgb(48,156,255));
+        chevron.setGravity(Gravity.CENTER);
+        top.addView(chevron,new LinearLayout.LayoutParams(0,50,1));
+        box.addView(top,new LinearLayout.LayoutParams(-1,50));
+
+        TextView n=text(name,16,TEXT);
+        n.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+        box.addView(n,new LinearLayout.LayoutParams(-1,24));
+
+        TextView q=text(sub,11,MUTED);
+        box.addView(q,new LinearLayout.LayoutParams(-1,22));
+        return box;
     }
+
     private TextView nav(String i,String s,int c){TextView v=text(i+"\n"+s,10,c);v.setGravity(Gravity.CENTER);return v;}
 
     private void showHome(){
