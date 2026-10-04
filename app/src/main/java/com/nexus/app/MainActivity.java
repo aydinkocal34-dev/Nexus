@@ -57,7 +57,7 @@ public final class MainActivity extends Activity {
     private LinearLayout screen() {
         LinearLayout s = new LinearLayout(this);
         s.setOrientation(LinearLayout.VERTICAL);
-        s.setPadding(16, 14, 16, 28);
+        s.setPadding(16, 24, 16, 28);
         return s;
     }
 
@@ -124,7 +124,7 @@ public final class MainActivity extends Activity {
         TextView menu = text("⋮", 24, MUTED);
         menu.setGravity(Gravity.CENTER);
         h.addView(menu, new LinearLayout.LayoutParams(42, 46));
-        page.addView(h, new LinearLayout.LayoutParams(-1, 54));
+        page.addView(h, new LinearLayout.LayoutParams(-1, 64));
         if (sub != null && !sub.isEmpty()) {
             TextView st = text(sub, 13, MUTED);
             page.addView(st, new LinearLayout.LayoutParams(-1, -2));
@@ -199,13 +199,13 @@ public final class MainActivity extends Activity {
         TextView glow = text("✦", 110, Color.rgb(12, 88, 170));
         glow.setGravity(Gravity.CENTER);
         glow.setAlpha(0.18f);
-        logoFrame.addView(glow, new FrameLayout.LayoutParams(165, 145, Gravity.CENTER));
+        logoFrame.addView(glow, new FrameLayout.LayoutParams(125, 110, Gravity.CENTER));
 
         ImageView logo = new ImageView(this);
         logo.setImageResource(R.drawable.nexus_logo);
         logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        logoFrame.addView(logo, new FrameLayout.LayoutParams(145, 145, Gravity.CENTER));
-        logoBlock.addView(logoFrame, new LinearLayout.LayoutParams(180, 148));
+        logoFrame.addView(logo, new FrameLayout.LayoutParams(108, 108, Gravity.CENTER));
+        logoBlock.addView(logoFrame, new LinearLayout.LayoutParams(170, 112));
 
         TextView safeTitle = text("Güvenli İletişim", 17, TEXT);
         safeTitle.setGravity(Gravity.CENTER);
@@ -216,7 +216,7 @@ public final class MainActivity extends Activity {
         safeSub.setGravity(Gravity.CENTER);
         logoBlock.addView(safeSub, new LinearLayout.LayoutParams(-1, 28));
 
-        root.addView(logoBlock, new LinearLayout.LayoutParams(-1, 208));
+        root.addView(logoBlock, new LinearLayout.LayoutParams(-1, 174));
 
         // Reference 2x2 premium cards
         LinearLayout row1 = new LinearLayout(this);
@@ -321,7 +321,7 @@ public final class MainActivity extends Activity {
 
         addSpace(p, 0);
         LinearLayout.LayoutParams empty = new LinearLayout.LayoutParams(-1, 0, 1);
-        TextView no = text("♙\\n\\nHenüz kişi yok\\nSohbete başlamak için bir NEXUS ID ekleyin.", 15, MUTED);
+        TextView no = text("♙\n\\nHenüz kişi yok\\nSohbete başlamak için bir NEXUS ID ekleyin.", 15, MUTED);
         no.setGravity(Gravity.CENTER);
         p.addView(no, empty);
 
