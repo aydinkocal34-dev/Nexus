@@ -78,9 +78,11 @@ public class MainActivity extends Activity implements RealE2eeTransport.Listener
         try {
             transport=new RealE2eeTransport(this,localPeerId,1,this);
             return true;
-        } catch(Exception e) {
+        } catch(Throwable e) {
             if(connectionStatus!=null) connectionStatus.setText("● E2EE HAZIR DEĞİL");
-            android.widget.Toast.makeText(this,"E2EE başlatılamadı: "+e.getMessage(),android.widget.Toast.LENGTH_LONG).show();
+            String detail=e.getMessage()==null?e.getClass().getSimpleName():e.getMessage();
+            android.widget.Toast.makeText(this,"E2EE başlatılamadı: "+detail,android.widget.Toast.LENGTH_LONG).show();
+            transport=null;
             return false;
         }
     }
