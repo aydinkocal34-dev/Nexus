@@ -62,135 +62,93 @@ public final class MainActivity extends Activity {
         LinearLayout box=new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER_VERTICAL);
-        box.setPadding(dp(14),dp(8),dp(10),dp(8));
-        box.setBackground(bg(CARD,dp(18)));
-        box.setOnClickListener(l);
+        box.setPadding(dp(14),dp(9),dp(10),dp(8));
+        box.setBackground(bg(CARD,dp(18))); box.setOnClickListener(l);
 
-        LinearLayout top=new LinearLayout(this);
-        top.setGravity(Gravity.CENTER_VERTICAL);
-
-        ImageView icon=new ImageView(this);
-        icon.setImageResource(res);
-        icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        LinearLayout top=new LinearLayout(this); top.setGravity(Gravity.CENTER_VERTICAL);
+        ImageView icon=new ImageView(this); icon.setImageResource(res); icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         icon.setBackground(bg(Color.rgb(10,35,65),dp(24)));
         top.addView(icon,new LinearLayout.LayoutParams(dp(42),dp(42)));
+        TextView arrow=text("›",31,Color.rgb(48,156,255)); arrow.setGravity(Gravity.CENTER);
+        top.addView(arrow,new LinearLayout.LayoutParams(0,dp(42),1)); box.addView(top,new LinearLayout.LayoutParams(-1,dp(42)));
 
-        TextView chevron=text("›",30,Color.rgb(48,156,255));
-        chevron.setGravity(Gravity.CENTER);
-        top.addView(chevron,new LinearLayout.LayoutParams(0,dp(42),1));
-        box.addView(top,new LinearLayout.LayoutParams(-1,dp(42)));
-
-        TextView n=text(name,15,TEXT);
-        n.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
-        box.addView(n,new LinearLayout.LayoutParams(-1,dp(23)));
-
-        TextView q=text(sub,11,MUTED);
-        box.addView(q,new LinearLayout.LayoutParams(-1,dp(20)));
+        TextView n=text(name,16,TEXT); n.setTypeface(Typeface.DEFAULT,Typeface.BOLD); box.addView(n,new LinearLayout.LayoutParams(-1,dp(23)));
+        TextView q=text(sub,11,MUTED); box.addView(q,new LinearLayout.LayoutParams(-1,dp(20)));
         return box;
     }
 
     private TextView nav(String i,String s,int c){TextView v=text(i+"\n"+s,10,c);v.setGravity(Gravity.CENTER);return v;}
 
     private void showHome(){
+        // Reference layout: normal Android dp sizing, generous spacing, no overlap.
         LinearLayout p=new LinearLayout(this);
         p.setOrientation(LinearLayout.VERTICAL);
-        p.setPadding(dp(6),0,dp(6),dp(6));
+        p.setPadding(dp(8),dp(4),dp(8),dp(8));
         p.setBackgroundColor(BG);
 
         LinearLayout h=new LinearLayout(this);
         h.setGravity(Gravity.CENTER_VERTICAL);
-        ImageView menu=new ImageView(this);
-        menu.setImageResource(R.drawable.ic_menu);
-        menu.setPadding(dp(7),dp(7),dp(7),dp(7));
-        h.addView(menu,new LinearLayout.LayoutParams(dp(48),dp(48)));
-
-        TextView brand=text("NEXUS",22,TEXT);
-        brand.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
-        brand.setGravity(Gravity.CENTER);
-        h.addView(brand,new LinearLayout.LayoutParams(0,dp(48),1));
-
-        ImageView bell=new ImageView(this);
-        bell.setImageResource(R.drawable.ic_bell);
-        bell.setPadding(dp(7),dp(7),dp(7),dp(7));
-        bell.setOnClickListener(v->showNotifications());
-        h.addView(bell,new LinearLayout.LayoutParams(dp(48),dp(48)));
+        ImageView menu=new ImageView(this); menu.setImageResource(R.drawable.ic_menu); menu.setPadding(dp(8),dp(8),dp(8),dp(8));
+        h.addView(menu,new LinearLayout.LayoutParams(dp(48),dp(52)));
+        TextView brand=text("NEXUS",23,TEXT); brand.setTypeface(Typeface.DEFAULT,Typeface.BOLD); brand.setGravity(Gravity.CENTER);
+        h.addView(brand,new LinearLayout.LayoutParams(0,dp(52),1));
+        ImageView bell=new ImageView(this); bell.setImageResource(R.drawable.ic_bell); bell.setPadding(dp(8),dp(8),dp(8),dp(8)); bell.setOnClickListener(v->showNotifications());
+        h.addView(bell,new LinearLayout.LayoutParams(dp(48),dp(52)));
         p.addView(h);
 
         LinearLayout hero=new LinearLayout(this);
-        hero.setOrientation(LinearLayout.VERTICAL);
-        hero.setGravity(Gravity.CENTER_HORIZONTAL);
-
-        ImageView logo=new ImageView(this);
-        logo.setImageResource(R.drawable.nexus_logo);
-        logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        hero.addView(logo,new LinearLayout.LayoutParams(dp(108),dp(82)));
-
-        TextView s1=text(english?"Secure Communication":"Güvenli İletişim",18,TEXT);
-        s1.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
-        s1.setGravity(Gravity.CENTER);
-        hero.addView(s1,new LinearLayout.LayoutParams(-1,dp(27)));
-
-        TextView s2=text(english?"Secure Future":"Güvenli Gelecek",15,Color.rgb(190,210,235));
-        s2.setGravity(Gravity.CENTER);
-        hero.addView(s2,new LinearLayout.LayoutParams(-1,dp(24)));
-        p.addView(hero,new LinearLayout.LayoutParams(-1,dp(133)));
+        hero.setOrientation(LinearLayout.VERTICAL); hero.setGravity(Gravity.CENTER_HORIZONTAL);
+        ImageView logo=new ImageView(this); logo.setImageResource(R.drawable.nexus_logo); logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        hero.addView(logo,new LinearLayout.LayoutParams(dp(92),dp(82)));
+        TextView s1=text(english?"Secure Communication":"Güvenli İletişim",19,TEXT); s1.setTypeface(Typeface.DEFAULT,Typeface.BOLD); s1.setGravity(Gravity.CENTER);
+        hero.addView(s1,new LinearLayout.LayoutParams(-1,dp(30)));
+        TextView s2=text(english?"Secure Future":"Güvenli Gelecek",16,Color.rgb(190,210,235)); s2.setGravity(Gravity.CENTER);
+        hero.addView(s2,new LinearLayout.LayoutParams(-1,dp(27)));
+        p.addView(hero,new LinearLayout.LayoutParams(-1,dp(139)));
 
         View earth=new View(this){
             final android.graphics.Paint paint=new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
             final android.graphics.Path path=new android.graphics.Path();
-            @Override protected void onDraw(android.graphics.Canvas c){
+            protected void onDraw(android.graphics.Canvas c){
                 float w=getWidth(),h=getHeight();
-                paint.setStyle(android.graphics.Paint.Style.FILL);
-                paint.setColor(Color.rgb(2,18,42));
-                path.reset(); path.moveTo(0,h*.70f); path.quadTo(w*.50f,-h*.55f,w,h*.70f);
-                path.lineTo(w,h);path.lineTo(0,h);path.close();c.drawPath(path,paint);
-                paint.setStyle(android.graphics.Paint.Style.STROKE);
-                paint.setStrokeWidth(dp(1.4f));paint.setColor(Color.rgb(0,150,255));
+                paint.setStyle(android.graphics.Paint.Style.FILL); paint.setColor(Color.rgb(2,18,42));
+                path.reset(); path.moveTo(0,h*.72f); path.quadTo(w*.50f,-h*.80f,w,h*.72f); path.lineTo(w,h); path.lineTo(0,h); path.close(); c.drawPath(path,paint);
+                paint.setStyle(android.graphics.Paint.Style.STROKE); paint.setStrokeWidth(dp(1.5f)); paint.setColor(Color.rgb(0,150,255));
                 paint.setShadowLayer(dp(7),0,0,Color.rgb(0,120,255));
-                path.reset();path.moveTo(-dp(10),h*.73f);path.quadTo(w*.50f,-h*.50f,w+dp(10),h*.73f);
-                c.drawPath(path,paint);paint.clearShadowLayer();
+                path.reset(); path.moveTo(-dp(12),h*.76f); path.quadTo(w*.50f,-h*.72f,w+dp(12),h*.76f); c.drawPath(path,paint); paint.clearShadowLayer();
             }
         };
-        p.addView(earth,new LinearLayout.LayoutParams(-1,dp(42)));
+        p.addView(earth,new LinearLayout.LayoutParams(-1,dp(46)));
 
-        LinearLayout r1=new LinearLayout(this);
-        r1.setGravity(Gravity.CENTER);
-        r1.addView(tile(R.drawable.ic_chat,english?"Chat":"Sohbet",english?"Secure messaging":"Güvenli mesajlaşma",v->showChats()),new LinearLayout.LayoutParams(0,dp(72),1));
-        r1.addView(new View(this),new LinearLayout.LayoutParams(dp(8),1));
-        r1.addView(tile(R.drawable.ic_people,english?"People":"Kişiler","NEXUS ID ekle",v->showContacts()),new LinearLayout.LayoutParams(0,dp(72),1));
+        LinearLayout r1=new LinearLayout(this); r1.setGravity(Gravity.CENTER);
+        r1.addView(tile(R.drawable.ic_chat,english?"Chat":"Sohbet",english?"Secure messaging":"Güvenli mesajlaşma",v->showChats()),new LinearLayout.LayoutParams(0,dp(108),1));
+        r1.addView(new View(this),new LinearLayout.LayoutParams(dp(12),1));
+        r1.addView(tile(R.drawable.ic_people,english?"People":"Kişiler","NEXUS ID ekle",v->showContacts()),new LinearLayout.LayoutParams(0,dp(108),1));
         p.addView(r1);
-        space(p,dp(5));
-
-        LinearLayout r2=new LinearLayout(this);
-        r2.setGravity(Gravity.CENTER);
-        r2.addView(tile(R.drawable.ic_shield,english?"Privacy":"Gizlilik",english?"Full encryption":"Tam şifreleme",v->showPrivacy()),new LinearLayout.LayoutParams(0,dp(72),1));
-        r2.addView(new View(this),new LinearLayout.LayoutParams(dp(8),1));
-        r2.addView(tile(R.drawable.ic_settings,english?"Settings":"Ayarlar",english?"App settings":"Uygulama ayarları",v->showSettings()),new LinearLayout.LayoutParams(0,dp(72),1));
+        space(p,dp(10));
+        LinearLayout r2=new LinearLayout(this); r2.setGravity(Gravity.CENTER);
+        r2.addView(tile(R.drawable.ic_shield,english?"Privacy":"Gizlilik",english?"Full encryption":"Tam şifreleme",v->showPrivacy()),new LinearLayout.LayoutParams(0,dp(108),1));
+        r2.addView(new View(this),new LinearLayout.LayoutParams(dp(12),1));
+        r2.addView(tile(R.drawable.ic_settings,english?"Settings":"Ayarlar",english?"App settings":"Uygulama ayarları",v->showSettings()),new LinearLayout.LayoutParams(0,dp(108),1));
         p.addView(r2);
 
         View wave=new View(this){
             final android.graphics.Paint paint=new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
-            @Override protected void onDraw(android.graphics.Canvas c){
-                float w=getWidth(),h=getHeight();
-                paint.setStyle(android.graphics.Paint.Style.STROKE);paint.setStrokeCap(android.graphics.Paint.Cap.ROUND);
-                paint.setStrokeWidth(dp(1.5f));paint.setColor(Color.rgb(0,126,255));
-                paint.setShadowLayer(dp(6),0,0,Color.rgb(0,110,255));
-                android.graphics.Path a=new android.graphics.Path();
-                a.moveTo(-dp(20),h*.20f);a.cubicTo(w*.18f,h*.30f,w*.38f,h*.85f,w*.58f,h*.70f);
-                a.cubicTo(w*.78f,h*.55f,w*.88f,h*.38f,w+dp(20),h*.72f);c.drawPath(a,paint);paint.clearShadowLayer();
+            protected void onDraw(android.graphics.Canvas c){
+                float w=getWidth(),h=getHeight(); paint.setStyle(android.graphics.Paint.Style.STROKE); paint.setStrokeCap(android.graphics.Paint.Cap.ROUND);
+                paint.setStrokeWidth(dp(1.7f)); paint.setColor(Color.rgb(0,126,255)); paint.setShadowLayer(dp(6),0,0,Color.rgb(0,110,255));
+                android.graphics.Path q=new android.graphics.Path(); q.moveTo(-dp(20),h*.30f); q.cubicTo(w*.18f,h*.45f,w*.40f,h*.90f,w*.62f,h*.66f); q.cubicTo(w*.80f,h*.48f,w*.90f,h*.42f,w+dp(20),h*.72f); c.drawPath(q,paint); paint.clearShadowLayer();
             }
         };
-        p.addView(wave,new LinearLayout.LayoutParams(-1,dp(45)));
-
+        p.addView(wave,new LinearLayout.LayoutParams(-1,dp(58)));
         p.addView(new View(this),new LinearLayout.LayoutParams(-1,0,1));
 
-        LinearLayout n=new LinearLayout(this);
-        n.setGravity(Gravity.CENTER);n.setPadding(dp(3),dp(3),dp(3),dp(3));n.setBackground(bg(Color.rgb(7,19,33),dp(18)));
-        n.addView(nav("⌂",english?"Home":"Ana Sayfa",BLUE),new LinearLayout.LayoutParams(0,dp(62),1));
-        TextView ch=nav("◌",english?"Chats":"Sohbetler",MUTED);ch.setOnClickListener(v->showChats());n.addView(ch,new LinearLayout.LayoutParams(0,dp(62),1));
-        TextView pe=nav("♙",english?"People":"Kişiler",MUTED);pe.setOnClickListener(v->showContacts());n.addView(pe,new LinearLayout.LayoutParams(0,dp(62),1));
-        TextView se=nav("⚙",english?"Settings":"Ayarlar",MUTED);se.setOnClickListener(v->showSettings());n.addView(se,new LinearLayout.LayoutParams(0,dp(62),1));
-        p.addView(n,new LinearLayout.LayoutParams(-1,dp(68)));
+        LinearLayout n=new LinearLayout(this); n.setGravity(Gravity.CENTER); n.setPadding(dp(4),dp(3),dp(4),dp(3)); n.setBackground(bg(Color.rgb(7,19,33),dp(20)));
+        n.addView(nav("⌂",english?"Home":"Ana Sayfa",BLUE),new LinearLayout.LayoutParams(0,dp(66),1));
+        TextView ch=nav("◌",english?"Chats":"Sohbetler",MUTED); ch.setOnClickListener(v->showChats()); n.addView(ch,new LinearLayout.LayoutParams(0,dp(66),1));
+        TextView pe=nav("♙",english?"People":"Kişiler",MUTED); pe.setOnClickListener(v->showContacts()); n.addView(pe,new LinearLayout.LayoutParams(0,dp(66),1));
+        TextView se=nav("⚙",english?"Settings":"Ayarlar",MUTED); se.setOnClickListener(v->showSettings()); n.addView(se,new LinearLayout.LayoutParams(0,dp(66),1));
+        p.addView(n,new LinearLayout.LayoutParams(-1,dp(72)));
         show(p);
     }
 
