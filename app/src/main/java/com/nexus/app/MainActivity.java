@@ -32,6 +32,7 @@ public final class MainActivity extends Activity {
         v.setText(text);
         v.setTextSize(size);
         v.setTextColor(color);
+        v.setIncludeFontPadding(true);
         return v;
     }
 
@@ -39,12 +40,12 @@ public final class MainActivity extends Activity {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER);
-        box.setPadding(10, 12, 10, 10);
+        box.setPadding(8, 12, 8, 12);
         box.setBackground(rounded(CARD_2, 24f));
 
-        TextView i = label(icon, 25f, TEXT);
+        TextView i = label(icon, 23f, TEXT);
         i.setGravity(Gravity.CENTER);
-        box.addView(i, new LinearLayout.LayoutParams(-1, 38));
+        box.addView(i, new LinearLayout.LayoutParams(-1, 36));
 
         TextView t = label(title, 14f, TEXT);
         t.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
@@ -53,7 +54,7 @@ public final class MainActivity extends Activity {
 
         TextView s = label(subtitle, 11f, MUTED);
         s.setGravity(Gravity.CENTER);
-        box.addView(s, new LinearLayout.LayoutParams(-1, 24));
+        box.addView(s, new LinearLayout.LayoutParams(-1, 26));
 
         return box;
     }
@@ -61,102 +62,111 @@ public final class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        getWindow().setStatusBarColor(BG);
+        getWindow().setNavigationBarColor(BG);
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         scroll.setBackgroundColor(BG);
+        scroll.setClipToPadding(false);
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(24, 30, 24, 22);
+        // Extra top space keeps the header clear of Android's status bar/edge-to-edge area.
+        root.setPadding(24, 58, 24, 28);
 
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView brand = label("NEXUS", 31f, TEXT);
+        TextView brand = label("NEXUS", 30f, TEXT);
         brand.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        header.addView(brand, new LinearLayout.LayoutParams(0, 62, 1f));
+        brand.setGravity(Gravity.CENTER_VERTICAL);
+        header.addView(brand, new LinearLayout.LayoutParams(0, 58, 1f));
 
-        TextView profile = label("●", 27f, ACCENT);
+        TextView profile = label("●", 23f, ACCENT);
         profile.setGravity(Gravity.CENTER);
         profile.setBackground(rounded(CARD_2, 40f));
-        header.addView(profile, new LinearLayout.LayoutParams(56, 56));
-        root.addView(header);
+        header.addView(profile, new LinearLayout.LayoutParams(52, 52));
+        root.addView(header, new LinearLayout.LayoutParams(-1, 58));
 
         TextView subtitle = label("Güvenli iletişimin yeni nesli", 15f, MUTED);
-        root.addView(subtitle, new LinearLayout.LayoutParams(-1, 34));
+        subtitle.setGravity(Gravity.CENTER_VERTICAL);
+        root.addView(subtitle, new LinearLayout.LayoutParams(-1, 42));
 
         LinearLayout statusCard = new LinearLayout(this);
         statusCard.setOrientation(LinearLayout.VERTICAL);
-        statusCard.setPadding(24, 22, 24, 22);
+        statusCard.setPadding(22, 18, 22, 18);
         statusCard.setBackground(rounded(CARD, 28f));
 
         LinearLayout statusLine = new LinearLayout(this);
         statusLine.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView dot = label("●", 16f, SUCCESS);
-        statusLine.addView(dot, new LinearLayout.LayoutParams(30, 36));
+        TextView dot = label("●", 15f, SUCCESS);
+        dot.setGravity(Gravity.CENTER);
+        statusLine.addView(dot, new LinearLayout.LayoutParams(28, 34));
 
-        TextView ready = label("NEXUS hazır", 20f, TEXT);
+        TextView ready = label("NEXUS hazır", 19f, TEXT);
         ready.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        statusLine.addView(ready, new LinearLayout.LayoutParams(0, 36, 1f));
+        ready.setGravity(Gravity.CENTER_VERTICAL);
+        statusLine.addView(ready, new LinearLayout.LayoutParams(0, 34, 1f));
 
-        TextView badge = label("AKTİF", 11f, SUCCESS);
+        TextView badge = label("AKTİF", 10f, SUCCESS);
         badge.setGravity(Gravity.CENTER);
         badge.setBackground(rounded(Color.rgb(19, 64, 48), 18f));
-        statusLine.addView(badge, new LinearLayout.LayoutParams(68, 34));
-
-        statusCard.addView(statusLine);
+        statusLine.addView(badge, new LinearLayout.LayoutParams(66, 32));
+        statusCard.addView(statusLine, new LinearLayout.LayoutParams(-1, 34));
 
         TextView statusDetail = label("Bağlantı kurulmaya hazır.", 14f, MUTED);
-        statusDetail.setPadding(30, 4, 0, 16);
-        statusCard.addView(statusDetail);
+        statusDetail.setGravity(Gravity.CENTER_VERTICAL);
+        statusCard.addView(statusDetail, new LinearLayout.LayoutParams(-1, 38));
 
         TextView start = label("NEXUS'A BAŞLA", 16f, TEXT);
         start.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         start.setGravity(Gravity.CENTER);
         start.setBackground(rounded(ACCENT, 22f));
-        statusCard.addView(start, new LinearLayout.LayoutParams(-1, 58));
+        statusCard.addView(start, new LinearLayout.LayoutParams(-1, 56));
 
-        root.addView(statusCard, new LinearLayout.LayoutParams(-1, 230));
+        root.addView(statusCard, new LinearLayout.LayoutParams(-1, 146));
 
         TextView quickTitle = label("HIZLI ERİŞİM", 12f, MUTED);
         quickTitle.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        quickTitle.setPadding(6, 22, 0, 10);
-        root.addView(quickTitle, new LinearLayout.LayoutParams(-1, 48));
+        quickTitle.setGravity(Gravity.CENTER_VERTICAL);
+        quickTitle.setPadding(6, 10, 0, 4);
+        root.addView(quickTitle, new LinearLayout.LayoutParams(-1, 44));
 
         LinearLayout tiles = new LinearLayout(this);
         tiles.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout messages = tile("✉", "Mesajlar", "Sohbetler");
         LinearLayout contacts = tile("♟", "Kişiler", "Rehber");
         LinearLayout security = tile("◆", "Güvenlik", "Kontrol");
-        tiles.addView(messages, new LinearLayout.LayoutParams(0, 128, 1f));
-        tiles.addView(new View(this), new LinearLayout.LayoutParams(10, 1));
-        tiles.addView(contacts, new LinearLayout.LayoutParams(0, 128, 1f));
-        tiles.addView(new View(this), new LinearLayout.LayoutParams(10, 1));
-        tiles.addView(security, new LinearLayout.LayoutParams(0, 128, 1f));
-        root.addView(tiles);
+        tiles.addView(messages, new LinearLayout.LayoutParams(0, 124, 1f));
+        tiles.addView(new View(this), new LinearLayout.LayoutParams(8, 1));
+        tiles.addView(contacts, new LinearLayout.LayoutParams(0, 124, 1f));
+        tiles.addView(new View(this), new LinearLayout.LayoutParams(8, 1));
+        tiles.addView(security, new LinearLayout.LayoutParams(0, 124, 1f));
+        root.addView(tiles, new LinearLayout.LayoutParams(-1, 124));
 
         TextView infoTitle = label("NEXUS", 12f, MUTED);
         infoTitle.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        infoTitle.setPadding(6, 20, 0, 8);
+        infoTitle.setGravity(Gravity.CENTER_VERTICAL);
+        infoTitle.setPadding(6, 8, 0, 2);
         root.addView(infoTitle, new LinearLayout.LayoutParams(-1, 38));
 
         TextView info = label("Özel iletişim alanın hazır.\nYeni özellikler güvenli şekilde katman katman eklenecek.", 14f, MUTED);
-        info.setPadding(18, 14, 18, 14);
+        info.setGravity(Gravity.CENTER_VERTICAL);
+        info.setPadding(18, 10, 18, 10);
         info.setBackground(rounded(CARD, 22f));
         root.addView(info, new LinearLayout.LayoutParams(-1, 76));
 
         TextView footer = label("NEXUS  •  v0.22.2", 12f, MUTED);
         footer.setGravity(Gravity.CENTER);
-        root.addView(footer, new LinearLayout.LayoutParams(-1, 54));
+        root.addView(footer, new LinearLayout.LayoutParams(-1, 50));
 
         View.OnClickListener action = new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                info.setText(((LinearLayout) v).getChildAt(1) instanceof TextView
-                        ? ((TextView) ((LinearLayout) v).getChildAt(1)).getText() + "\n\nArayüz testi başarılı."
-                        : "NEXUS\n\nArayüz testi başarılı.");
+                TextView title = (TextView) ((LinearLayout) v).getChildAt(1);
+                info.setText(title.getText() + "\n\nArayüz testi başarılı.");
             }
         };
 
