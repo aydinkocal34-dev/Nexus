@@ -43,8 +43,8 @@ public final class MainActivity extends Activity {
     private GradientDrawable bg(int c,float r){GradientDrawable d=new GradientDrawable();d.setColor(c);d.setCornerRadius(r);return d;}
     private TextView text(String s,float size,int color){TextView v=new TextView(this);v.setText(s);v.setTextSize(size);v.setTextColor(color);v.setIncludeFontPadding(true);return v;}
     private TextView title(String s){TextView v=text(s,22,TEXT);v.setTypeface(Typeface.DEFAULT,Typeface.BOLD);v.setGravity(Gravity.CENTER_VERTICAL);return v;}
-    private LinearLayout screen(){LinearLayout s=new LinearLayout(this);s.setOrientation(LinearLayout.VERTICAL);s.setPadding(16,24,16,28);s.setBackgroundColor(BG);return s;}
-    private LinearLayout card(){LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(18,16,18,16);c.setBackground(bg(PANEL,18));return c;}
+    private LinearLayout screen(){LinearLayout s=new LinearLayout(this);s.setOrientation(LinearLayout.VERTICAL);s.setPadding(dp(16),dp(20),dp(16),dp(24));s.setBackgroundColor(BG);return s;}
+    private LinearLayout card(){LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(18),dp(14),dp(18),dp(14));c.setBackground(bg(PANEL,dp(18)));return c;}
     private Button button(String s){Button b=new Button(this);b.setText(s);b.setTextColor(TEXT);b.setTextSize(15);b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);b.setAllCaps(false);b.setBackground(bg(BLUE,18));return b;}
     private EditText field(String hint){EditText e=new EditText(this);e.setHint(hint);e.setHintTextColor(MUTED);e.setTextColor(TEXT);e.setTextSize(15);e.setSingleLine(true);e.setPadding(17,6,17,6);e.setBackground(bg(CARD,16));return e;}
     private TextView icon(String s,View.OnClickListener l){TextView v=text(s,25,TEXT);v.setGravity(Gravity.CENTER);v.setBackground(bg(CARD,26));v.setOnClickListener(l);return v;}
@@ -52,11 +52,7 @@ public final class MainActivity extends Activity {
     private void show(LinearLayout p){root.removeAllViews();root.addView(p,new LinearLayout.LayoutParams(-1,-1));}
     private void header(LinearLayout p,String t,String sub,View.OnClickListener back){
         LinearLayout h=new LinearLayout(this);h.setGravity(Gravity.CENTER_VERTICAL);
-        if(back!=null)h.addView(icon("‹",back),new LinearLayout.LayoutParams(46,46));
-        h.addView(title(t),new LinearLayout.LayoutParams(0,58,1));
-        TextView home=icon("⌂",v->showHome());home.setTextColor(BLUE);h.addView(home,new LinearLayout.LayoutParams(46,46));
-        p.addView(h,new LinearLayout.LayoutParams(-1,64));
-        if(sub!=null&&!sub.isEmpty())p.addView(text(sub,13,MUTED),new LinearLayout.LayoutParams(-1,-2));
+        if(back!=null)h.addView(icon("‹",back),new LinearLayout.LayoutParams(dp(46),dp(46)));\n        h.addView(title(t),new LinearLayout.LayoutParams(0,dp(56),1));\n        TextView home=icon("⌂",v->showHome());home.setTextColor(BLUE);h.addView(home,new LinearLayout.LayoutParams(dp(46),dp(46)));\n        p.addView(h,new LinearLayout.LayoutParams(-1,dp(58)));\n        if(sub!=null&&!sub.isEmpty())p.addView(text(sub,13,MUTED),new LinearLayout.LayoutParams(-1,-2));
     }
     private LinearLayout tile(int res,String name,String sub,View.OnClickListener l){
         LinearLayout box=new LinearLayout(this);
@@ -158,10 +154,10 @@ public final class MainActivity extends Activity {
         if(contactIds.isEmpty()){TextView empty=text(english?"No conversations yet\nAdd a NEXUS ID to start.":"Henüz sohbet yok\nBaşlamak için NEXUS ID ekleyin.",15,MUTED);empty.setGravity(Gravity.CENTER);p.addView(empty,new LinearLayout.LayoutParams(-1,0,1));}
         else{
             LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);
-            for(String id:contactIds){LinearLayout c=card();TextView a=text("●  "+id,16,TEXT);a.setTypeface(Typeface.DEFAULT,Typeface.BOLD);c.addView(a);c.addView(text(english?"Tap to open encrypted chat":"Şifreli sohbeti açmak için dokunun",12,MUTED));c.setOnClickListener(v->showChat(id));list.addView(c,new LinearLayout.LayoutParams(-1,82));space(list,8);}
+            for(String id:contactIds){LinearLayout c=card();TextView a=text("●  "+id,16,TEXT);a.setTypeface(Typeface.DEFAULT,Typeface.BOLD);c.addView(a);c.addView(text(english?"Tap to open encrypted chat":"Şifreli sohbeti açmak için dokunun",12,MUTED));c.setOnClickListener(v->showChat(id));list.addView(c,new LinearLayout.LayoutParams(-1,dp(78)));space(list,dp(8));}
             p.addView(list,new LinearLayout.LayoutParams(-1,0,1));
         }
-        Button add=button(english?"New secure chat":"Yeni güvenli sohbet");add.setOnClickListener(v->showIdEntry());p.addView(add,new LinearLayout.LayoutParams(-1,58));show(p);
+        Button add=button(english?"New secure chat":"Yeni güvenli sohbet");add.setOnClickListener(v->showIdEntry());p.addView(add,new LinearLayout.LayoutParams(-1,dp(56)));show(p);
     }
 
     private void showContacts(){
@@ -171,7 +167,7 @@ public final class MainActivity extends Activity {
         for(String id:contactIds){
             LinearLayout c=card();c.setOnClickListener(v->showChat(id));
             c.addView(text("♙  "+id,16,TEXT));c.addView(text(english?"Encrypted contact":"Uçtan uca şifreli kişi",12,MUTED));
-            list.addView(c,new LinearLayout.LayoutParams(-1,76));space(list,8);
+            list.addView(c,new LinearLayout.LayoutParams(-1,dp(74)));space(list,8);
         }
         p.addView(list,new LinearLayout.LayoutParams(-1,0,1));
         Button add=button(english?"Add NEXUS ID":"NEXUS ID Ekle");add.setOnClickListener(v->showIdEntry());p.addView(add,new LinearLayout.LayoutParams(-1,58));show(p);
@@ -196,8 +192,8 @@ public final class MainActivity extends Activity {
         messages=new LinearLayout(this);messages.setOrientation(LinearLayout.VERTICAL);p.addView(messages,new LinearLayout.LayoutParams(-1,0,1));
         loadLocalMessages(id);
         LinearLayout bar=new LinearLayout(this);bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(6,6,6,6);bar.setBackground(bg(PANEL,22));
-        EditText input=field(english?"Message...":"Mesaj yaz...");bar.addView(input,new LinearLayout.LayoutParams(0,54,1));
-        TextView send=text("➤",22,TEXT);send.setGravity(Gravity.CENTER);send.setBackground(bg(BLUE,30));bar.addView(send,new LinearLayout.LayoutParams(54,54));
+        EditText input=field(english?"Message...":"Mesaj yaz...");bar.addView(input,new LinearLayout.LayoutParams(0,dp(54),1));
+        TextView send=text("➤",22,TEXT);send.setGravity(Gravity.CENTER);send.setBackground(bg(BLUE,30));bar.addView(send,new LinearLayout.LayoutParams(dp(54),dp(54)));
         send.setOnClickListener(v->{String msg=input.getText().toString().trim();if(msg.isEmpty())return;appendMessage(msg,true);saveMessage(id,msg,true);input.setText("");if(e2ee!=null){try{e2ee.sendText(id,1,msg);}catch(Exception ex){toast("E2EE: "+ex.getMessage());}}});
         p.addView(bar);show(p);
     }
