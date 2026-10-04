@@ -199,8 +199,13 @@ public final class MainActivity extends Activity {
         heroText.setPadding(14, 0, 0, 0);
         TextView welcome = text("NEXUS'a hoş geldin", 18, TEXT);
         welcome.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        welcome.setIncludeFontPadding(false);\n        welcome.setMaxLines(1);\n        heroText.addView(welcome);
-        TextView heroSub = text("Özel ve güvenli iletişim alanın hazır.", 11, MUTED);\n        heroSub.setIncludeFontPadding(false);\n        heroSub.setMaxLines(2);\n        heroText.addView(heroSub);
+        welcome.setIncludeFontPadding(false);
+        welcome.setMaxLines(1);
+        heroText.addView(welcome);
+        TextView heroSub = text("Özel ve güvenli iletişim alanın hazır.", 11, MUTED);
+        heroSub.setIncludeFontPadding(false);
+        heroSub.setMaxLines(2);
+        heroText.addView(heroSub);
         heroTop.addView(heroText, new LinearLayout.LayoutParams(0, -2, 1));
         hero.addView(heroTop);
 
