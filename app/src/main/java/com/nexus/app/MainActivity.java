@@ -130,23 +130,24 @@ public final class MainActivity extends Activity {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER);
-        box.setPadding(8, 12, 8, 12);
+        box.setPadding(10, 10, 10, 10);
         box.setBackground(bg(CARD, 18));
 
-        TextView i = text(icon, 21, BLUE);
+        TextView i = text(icon, 25, BLUE);
         i.setGravity(Gravity.CENTER);
-        i.setIncludeFontPadding(false);
-        box.addView(i, new LinearLayout.LayoutParams(-1, 28));
+        i.setIncludeFontPadding(true);
+        i.setBackground(bg(PANEL, 28));
+        box.addView(i, new LinearLayout.LayoutParams(48, 48));
 
-        TextView n = text(name, 14, TEXT);
+        TextView n = text(name, 15, TEXT);
         n.setGravity(Gravity.CENTER);
         n.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        n.setIncludeFontPadding(false);
+        n.setIncludeFontPadding(true);
         box.addView(n, new LinearLayout.LayoutParams(-1, -2));
 
         TextView s = text(sub, 10, MUTED);
         s.setGravity(Gravity.CENTER);
-        s.setIncludeFontPadding(false);
+        s.setIncludeFontPadding(true);
         box.addView(s, new LinearLayout.LayoutParams(-1, -2));
 
         box.setOnClickListener(click);
