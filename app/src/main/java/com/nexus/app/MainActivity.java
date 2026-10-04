@@ -25,6 +25,7 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.lang.reflect.Method;
 
 public class MainActivity extends Activity {
     private static final int BG=Color.rgb(4,13,25), CARD=Color.rgb(12,28,48), CARD2=Color.rgb(18,39,65);
@@ -35,7 +36,9 @@ public class MainActivity extends Activity {
     private String localPeerId="";
     private String relayWss="wss://nexus-blind-relay.onrender.com";
     private TextView connectionStatus;
-    private E2eeBridge e2eeRuntime;
+    private Object e2eeRuntime;
+    private Method e2eeConnectMethod;
+    private Method e2eeSendMethod;
     private final android.os.Handler handler=new android.os.Handler();
     private static final String PREFS="nexus_runtime";
     private static final String CHANNEL="nexus_messages";
@@ -76,22 +79,35 @@ public class MainActivity extends Activity {
     private boolean ensureTransport(){
         if(e2eeRuntime!=null) return true;
         try {
-            e2eeRuntime=new E2eeBridge(this,localPeerId,new E2eeBridge.Listener(){
-                @Override public void onReady(){runOnUiThread(()->{if(connectionStatus!=null)connectionStatus.setText("● GÜVENLİ BAĞLI");});}
-                @Override public void onMessage(String from,String message,String id){runOnUiThread(()->MainActivity.this.onIncomingMessage(from,message,id));}
-                @Override public void onError(String message){runOnUiThread(()->MainActivity.this.onTransportError(message));}
-            });
+            Class<?> bridge=Class.forName("com.nexus.app.E2eeBridge",true,getClassLoader());
+            Class<?> listener=Class.forName("com.nexus.app.E2eeBridge$Listener",true,getClassLoader());
+            Object proxy=java.lang.reflect.Proxy.newProxyInstance(listener.getClassLoader(),new Class<?>[]{listener},
+                (obj,method,args)->{
+                    String n=method.getName();
+                    if("onReady".equals(n)) runOnUiThread(()->{if(connectionStatus!=null)connectionStatus.setText("● GÜVENLİ BAĞLI");});
+                    else if("onMessage".equals(n)&&args!=null&&args.length>=3) runOnUiThread(()->onIncomingMessage(String.valueOf(args[0]),String.valueOf(args[1]),String.valueOf(args[2])));
+                    else if("onError".equals(n)&&args!=null&&args.length>=1) runOnUiThread(()->onTransportError(String.valueOf(args[0])));
+                    return null;
+                });
+            java.lang.reflect.Constructor<?> ctor=bridge.getDeclaredConstructor(android.content.Context.class,String.class,listener);
+            ctor.setAccessible(true);
+            e2eeRuntime=ctor.newInstance(this,localPeerId,proxy);
+            e2eeConnectMethod=bridge.getDeclaredMethod("connect",String.class);
+            e2eeSendMethod=bridge.getDeclaredMethod("sendText",String.class,int.class,String.class);
             return true;
         } catch(Throwable e) {
             if(connectionStatus!=null) connectionStatus.setText("● E2EE HAZIR DEĞİL");
             String detail=e.getMessage()==null?e.getClass().getSimpleName():e.getMessage();
             android.widget.Toast.makeText(this,"E2EE başlatılamadı: "+detail,android.widget.Toast.LENGTH_LONG).show();
-            e2eeRuntime=null;
+            e2eeRuntime=null; e2eeConnectMethod=null; e2eeSendMethod=null;
             return false;
         }
     }
     private void connectRelay(){
-        if(ensureTransport() && !relayWss.isEmpty()) e2eeRuntime.connect(relayWss);
+        if(ensureTransport() && !relayWss.isEmpty()){
+            try { e2eeConnectMethod.invoke(e2eeRuntime,relayWss); }
+            catch(Throwable e){ onTransportError(String.valueOf(e.getCause()==null?e.getMessage():e.getCause().getMessage())); }
+        }
     }
     private void onIncomingMessage(String from,String message,String id){
         messages.add(message); notifyNewMessage(from); if(from.equals(activePeer))showChat(from);
@@ -210,7 +226,7 @@ public class MainActivity extends Activity {
         Button save=button("WSS Relay'e Bağlan");
         save.setOnClickListener(v->{String value=url.getText().toString().trim();if(!value.startsWith("wss://")){url.setError("wss:// adresi gerekli");return;}relayWss=value;
             getSharedPreferences(PREFS,MODE_PRIVATE).edit().putString("relayWss",value).apply();
-            if(e2eeRuntime!=null) e2eeRuntime.connect(value); showHome();});
+            if(e2eeRuntime!=null){ try { e2eeConnectMethod.invoke(e2eeRuntime,value); } catch(Throwable ignored){} } showHome();});
         add(save,12);
         card(text("Bildirimler yalnızca “Yeni mesajınız var” bilgisini gösterir; mesaj metni bildirimde yer almaz.",13,MUTED,false));
     }
@@ -246,6 +262,6 @@ public class MainActivity extends Activity {
         send.setOnClickListener(v->{String msg=input.getText().toString().trim();if(msg.isEmpty())return;
             if(!ensureTransport()) return;
             connectRelay();
-            e2eeRuntime.sendText(peer,1,msg); messages.add(msg);input.setText("");showChat(peer);});
+            try { e2eeSendMethod.invoke(e2eeRuntime,peer,1,msg); messages.add(msg);input.setText("");showChat(peer); } catch(Throwable e){ onTransportError(String.valueOf(e.getCause()==null?e.getMessage():e.getCause().getMessage())); }});
     }
 }
