@@ -10,7 +10,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowInsets;
 import android.widget.Button;
-import android.widget.EditText;
+import android.widget.EditText;\nimport android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -157,89 +157,126 @@ public final class MainActivity extends Activity {
     private void showHome() {
         final LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(12, 5, 12, 8);
+        root.setPadding(8, 4, 8, 8);
         root.setBackgroundColor(BG);
 
+        // NEXUS reference header
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
 
         ImageView menu = new ImageView(this);
         menu.setImageResource(R.drawable.ic_menu);
-        menu.setPadding(6, 6, 6, 6);
-        header.addView(menu, new LinearLayout.LayoutParams(46, 52));
+        menu.setPadding(8, 8, 8, 8);
+        header.addView(menu, new LinearLayout.LayoutParams(54, 58));
 
-        TextView brand = text("NEXUS", 20, TEXT);
+        TextView brand = text("NEXUS", 22, TEXT);
         brand.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         brand.setGravity(Gravity.CENTER);
-        header.addView(brand, new LinearLayout.LayoutParams(0, 52, 1));
+        header.addView(brand, new LinearLayout.LayoutParams(0, 58, 1));
 
         ImageView bell = new ImageView(this);
         bell.setImageResource(R.drawable.ic_bell);
-        bell.setPadding(7, 7, 7, 7);
-        header.addView(bell, new LinearLayout.LayoutParams(46, 52));
+        bell.setPadding(9, 9, 9, 9);
+        header.addView(bell, new LinearLayout.LayoutParams(54, 58));
         root.addView(header);
 
+        // Large glowing NEXUS logo block
         LinearLayout logoBlock = new LinearLayout(this);
         logoBlock.setOrientation(LinearLayout.VERTICAL);
         logoBlock.setGravity(Gravity.CENTER_HORIZONTAL);
 
+        FrameLayout logoFrame = new FrameLayout(this);
+        TextView glow = text("✦", 110, Color.rgb(12, 88, 170));
+        glow.setGravity(Gravity.CENTER);
+        glow.setAlpha(0.18f);
+        logoFrame.addView(glow, new FrameLayout.LayoutParams(210, 190, Gravity.CENTER));
+
         ImageView logo = new ImageView(this);
         logo.setImageResource(R.drawable.nexus_logo);
         logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        logoBlock.addView(logo, new LinearLayout.LayoutParams(154, 154));
+        logoFrame.addView(logo, new FrameLayout.LayoutParams(190, 190, Gravity.CENTER));
+        logoBlock.addView(logoFrame, new LinearLayout.LayoutParams(220, 190));
 
-        TextView safeTitle = text("Güvenli İletişim", 16, TEXT);
+        TextView safeTitle = text("Güvenli İletişim", 17, TEXT);
         safeTitle.setGravity(Gravity.CENTER);
         safeTitle.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        logoBlock.addView(safeTitle, new LinearLayout.LayoutParams(-1, -2));
+        logoBlock.addView(safeTitle, new LinearLayout.LayoutParams(-1, 30));
 
-        TextView safeSub = text("Güvenli Gelecek", 13, MUTED);
+        TextView safeSub = text("Güvenli Gelecek", 15, MUTED);
         safeSub.setGravity(Gravity.CENTER);
-        logoBlock.addView(safeSub, new LinearLayout.LayoutParams(-1, -2));
+        logoBlock.addView(safeSub, new LinearLayout.LayoutParams(-1, 28));
 
-        root.addView(logoBlock, new LinearLayout.LayoutParams(-1, -2));
-        addSpace(root, 14);
+        root.addView(logoBlock, new LinearLayout.LayoutParams(-1, 248));
 
+        // Reference 2x2 premium cards
         LinearLayout row1 = new LinearLayout(this);
         row1.setGravity(Gravity.CENTER);
         row1.addView(tile(R.drawable.ic_chat, "Sohbet", "Güvenli mesajlaş", v -> showNewChat()),
-                new LinearLayout.LayoutParams(0, 126, 1));
-        row1.addView(new View(this), new LinearLayout.LayoutParams(12, 1));
+                new LinearLayout.LayoutParams(0, 184, 1));
+        row1.addView(new View(this), new LinearLayout.LayoutParams(14, 1));
         row1.addView(tile(R.drawable.ic_people, "Kişiler", "NEXUS ID ekle", v -> showNewChat()),
-                new LinearLayout.LayoutParams(0, 126, 1));
+                new LinearLayout.LayoutParams(0, 184, 1));
         root.addView(row1);
 
-        addSpace(root, 11);
+        addSpace(root, 12);
 
         LinearLayout row2 = new LinearLayout(this);
         row2.setGravity(Gravity.CENTER);
         row2.addView(tile(R.drawable.ic_shield, "Gizlilik", "Tam şifreleme", v -> showPrivacy()),
-                new LinearLayout.LayoutParams(0, 126, 1));
-        row2.addView(new View(this), new LinearLayout.LayoutParams(12, 1));
+                new LinearLayout.LayoutParams(0, 184, 1));
+        row2.addView(new View(this), new LinearLayout.LayoutParams(14, 1));
         row2.addView(tile(R.drawable.ic_settings, "Ayarlar", "Uygulama ayarları", v -> showPrivacy()),
-                new LinearLayout.LayoutParams(0, 126, 1));
+                new LinearLayout.LayoutParams(0, 184, 1));
         root.addView(row2);
+
+        // Neon wave at the bottom of the reference composition
+        View wave = new View(this) {
+            private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+            @Override protected void onDraw(android.graphics.Canvas canvas) {
+                super.onDraw(canvas);
+                float w = getWidth(), h = getHeight();
+                p.setStyle(android.graphics.Paint.Style.STROKE);
+                p.setStrokeWidth(5f);
+                p.setStrokeCap(android.graphics.Paint.Cap.ROUND);
+                p.setColor(Color.rgb(0, 126, 255));
+                p.setShadowLayer(18f, 0, 0, Color.rgb(0, 110, 255));
+                android.graphics.Path path = new android.graphics.Path();
+                path.moveTo(-30, h * 0.88f);
+                path.cubicTo(w * 0.20f, h * 0.15f, w * 0.47f, h * 0.18f, w * 0.76f, h * 0.70f);
+                path.cubicTo(w * 0.88f, h * 0.88f, w * 0.96f, h * 0.94f, w + 30, h * 0.98f);
+                canvas.drawPath(path, p);
+                p.clearShadowLayer();
+                p.setStrokeWidth(2.5f);
+                p.setColor(Color.rgb(51, 190, 255));
+                android.graphics.Path p2 = new android.graphics.Path();
+                p2.moveTo(-30, h * 0.98f);
+                p2.cubicTo(w * 0.22f, h * 0.28f, w * 0.48f, h * 0.30f, w * 0.78f, h * 0.78f);
+                p2.cubicTo(w * 0.90f, h * 0.92f, w, h * 0.96f, w + 30, h);
+                canvas.drawPath(p2, p);
+            }
+        };
+        root.addView(wave, new LinearLayout.LayoutParams(-1, 105));
 
         root.addView(new View(this), new LinearLayout.LayoutParams(-1, 0, 1));
 
         LinearLayout nav = new LinearLayout(this);
         nav.setGravity(Gravity.CENTER);
-        nav.setPadding(3, 3, 3, 3);
+        nav.setPadding(4, 5, 4, 5);
         nav.setBackground(bg(Color.rgb(7, 19, 33), 20));
 
-        nav.addView(navItem("⌂", "Ana Sayfa", BLUE), new LinearLayout.LayoutParams(0, 66, 1));
+        nav.addView(navItem("⌂", "Ana Sayfa", BLUE), new LinearLayout.LayoutParams(0, 70, 1));
 
         TextView chats = navItem("◌", "Sohbetler", MUTED);
         chats.setOnClickListener(v -> showNewChat());
-        nav.addView(chats, new LinearLayout.LayoutParams(0, 66, 1));
+        nav.addView(chats, new LinearLayout.LayoutParams(0, 70, 1));
 
         TextView people = navItem("♙", "Kişiler", MUTED);
         people.setOnClickListener(v -> showNewChat());
-        nav.addView(people, new LinearLayout.LayoutParams(0, 66, 1));
+        nav.addView(people, new LinearLayout.LayoutParams(0, 70, 1));
 
         TextView settings = navItem("⚙", "Ayarlar", MUTED);
         settings.setOnClickListener(v -> showPrivacy());
-        nav.addView(settings, new LinearLayout.LayoutParams(0, 66, 1));
+        nav.addView(settings, new LinearLayout.LayoutParams(0, 70, 1));
 
         root.addView(nav);
         clearAndShow(root);
