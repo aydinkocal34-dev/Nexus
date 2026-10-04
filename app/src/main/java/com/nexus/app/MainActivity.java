@@ -56,14 +56,14 @@ public final class MainActivity extends Activity {
     private LinearLayout screen() {
         LinearLayout s = new LinearLayout(this);
         s.setOrientation(LinearLayout.VERTICAL);
-        s.setPadding(14, 12, 14, 24);
+        s.setPadding(16, 14, 16, 28);
         return s;
     }
 
     private LinearLayout card() {
         LinearLayout c = new LinearLayout(this);
         c.setOrientation(LinearLayout.VERTICAL);
-        c.setPadding(18, 18, 18, 18);
+        c.setPadding(18, 16, 18, 16);
         c.setBackground(bg(PANEL, 18));
         return c;
     }
@@ -77,7 +77,7 @@ public final class MainActivity extends Activity {
         b.setAllCaps(false);
         b.setGravity(Gravity.CENTER);
         b.setBackground(bg(BLUE, 18));
-        b.setPadding(8, 8, 8, 8);
+        b.setPadding(10, 6, 10, 6);
         return b;
     }
 
@@ -88,7 +88,7 @@ public final class MainActivity extends Activity {
         e.setTextColor(TEXT);
         e.setTextSize(15);
         e.setSingleLine(true);
-        e.setPadding(16, 8, 16, 8);
+        e.setPadding(17, 6, 17, 6);
         e.setBackground(bg(CARD, 16));
         return e;
     }
@@ -111,7 +111,7 @@ public final class MainActivity extends Activity {
         if (back != null) h.addView(iconButton("‹", back), new LinearLayout.LayoutParams(46, 46));
         TextView t = title(titleText);
         h.addView(t, new LinearLayout.LayoutParams(0, 50, 1));
-        TextView menu = text("⋮", 26, TEXT);
+        TextView menu = text("⋮", 24, MUTED);
         menu.setGravity(Gravity.CENTER);
         h.addView(menu, new LinearLayout.LayoutParams(42, 46));
         page.addView(h, new LinearLayout.LayoutParams(-1, 54));
@@ -163,7 +163,7 @@ public final class MainActivity extends Activity {
         brand.setTextSize(21);
         brand.setGravity(Gravity.CENTER);
         brandBox.addView(brand, new LinearLayout.LayoutParams(-1, 30));
-        TextView online = text("GÜVENLİ AĞ", 9, GREEN);
+        TextView online = text("GÜVENLİ AĞ • AKTİF", 9, GREEN);
         online.setGravity(Gravity.CENTER);
         brandBox.addView(online, new LinearLayout.LayoutParams(-1, 18));
         top.addView(brandBox, new LinearLayout.LayoutParams(0, 48, 1));
@@ -193,7 +193,7 @@ public final class MainActivity extends Activity {
         TextView welcome = text("NEXUS'a hoş geldin", 18, TEXT);
         welcome.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         heroText.addView(welcome);
-        heroText.addView(text("Güvenli iletişim alanın hazır.", 12, MUTED));
+        heroText.addView(text("Özel ve güvenli iletişim alanın hazır.", 12, MUTED));
         heroTop.addView(heroText, new LinearLayout.LayoutParams(0, 64, 1));
         hero.addView(heroTop);
 
@@ -448,7 +448,7 @@ public final class MainActivity extends Activity {
         addSpace(p, 10);
         LinearLayout c2 = card();
         c2.addView(text("● Güvenlik durumu", 17, TEXT));
-        c2.addView(text("NEXUS çekirdek iletişim katmanı hazır.", 13, GREEN));
+        c2.addView(text("Güvenlik katmanı arayüzü hazır.", 13, GREEN));
         addSpace(c2, 8);
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -462,7 +462,7 @@ public final class MainActivity extends Activity {
         TextView key = text("Güvenlik anahtarı", 13, TEXT);
         key.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         details.addView(key);
-        details.addView(text("Cihaz tabanlı kimlik doğrulama hazır.", 11, MUTED));
+        details.addView(text("Cihaz kimliği için güvenli altyapı hazırlanıyor.", 11, MUTED));
         row.addView(details, new LinearLayout.LayoutParams(0, 48, 1));
         c2.addView(row);
         p.addView(c2);
