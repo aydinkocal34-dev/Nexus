@@ -449,6 +449,22 @@ public final class MainActivity extends Activity {
         LinearLayout c2 = card();
         c2.addView(text("● Güvenlik durumu", 17, TEXT));
         c2.addView(text("NEXUS çekirdek iletişim katmanı hazır.", 13, GREEN));
+        addSpace(c2, 8);
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        TextView shield = text("✓", 18, GREEN);
+        shield.setGravity(Gravity.CENTER);
+        shield.setBackground(bg(CARD, 24));
+        row.addView(shield, new LinearLayout.LayoutParams(42, 42));
+        LinearLayout details = new LinearLayout(this);
+        details.setOrientation(LinearLayout.VERTICAL);
+        details.setPadding(12, 0, 0, 0);
+        TextView key = text("Güvenlik anahtarı", 13, TEXT);
+        key.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        details.addView(key);
+        details.addView(text("Cihaz tabanlı kimlik doğrulama hazır.", 11, MUTED));
+        row.addView(details, new LinearLayout.LayoutParams(0, 48, 1));
+        c2.addView(row);
         p.addView(c2);
         clearAndShow(p);
     }
