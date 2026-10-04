@@ -288,6 +288,9 @@ public final class MainActivity extends Activity {
 
         final EditText search = field("NEXUS ID ara...");
         p.addView(search, new LinearLayout.LayoutParams(-1, 58));
+        TextView format = text("Örnek: kullanici@nexus", 11, MUTED);
+        format.setPadding(4, 5, 4, 0);
+        p.addView(format);
 
         addSpace(p, 12);
         LinearLayout qr = card();
@@ -321,7 +324,15 @@ public final class MainActivity extends Activity {
         addSpace(p, 12);
 
         Button search = blueButton("Ara");
-        search.setOnClickListener(v -> showFound(id.getText().toString()));
+        search.setOnClickListener(v -> {
+            String value = id.getText().toString().trim().toLowerCase();
+            if (value.isEmpty()) {
+                id.setError("NEXUS ID gerekli");
+                return;
+            }
+            if (!value.contains("@")) value = value + "@nexus";
+            showFound(value);
+        });
         p.addView(search, new LinearLayout.LayoutParams(-1, 58));
 
         TextView qr = text("Veya QR Kod Tara", 14, BLUE);
