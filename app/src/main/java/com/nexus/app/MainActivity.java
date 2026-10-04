@@ -155,172 +155,99 @@ public final class MainActivity extends Activity {
 
     private void showHome() {
         final LinearLayout p = screen();
-        p.setPadding(12, 8, 12, 16);
+        p.setPadding(14, 8, 14, 14);
 
-        // Clean, compact header
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView menu = text("☰", 23, TEXT);
+        TextView menu = text("☰", 25, TEXT);
         menu.setGravity(Gravity.CENTER);
-        top.addView(menu, new LinearLayout.LayoutParams(44, 48));
+        top.addView(menu, new LinearLayout.LayoutParams(46, 48));
 
-        LinearLayout brandBox = new LinearLayout(this);
-        brandBox.setOrientation(LinearLayout.VERTICAL);
-        brandBox.setGravity(Gravity.CENTER);
         TextView brand = title("NEXUS");
-        brand.setTextSize(20);
+        brand.setTextSize(21);
         brand.setGravity(Gravity.CENTER);
         brand.setIncludeFontPadding(true);
-        brandBox.addView(brand, new LinearLayout.LayoutParams(-1, -2));
-        TextView online = text("GÜVENLİ AĞ • AKTİF", 8, GREEN);
-        online.setGravity(Gravity.CENTER);
-        online.setIncludeFontPadding(true);
-        brandBox.addView(online, new LinearLayout.LayoutParams(-1, -2));
-        top.addView(brandBox, new LinearLayout.LayoutParams(0, -2, 1));
+        top.addView(brand, new LinearLayout.LayoutParams(0, 48, 1));
 
-        TextView profile = text("A", 17, TEXT);
-        profile.setGravity(Gravity.CENTER);
-        profile.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        profile.setBackground(bg(BLUE, 24));
-        top.addView(profile, new LinearLayout.LayoutParams(40, 40));
+        TextView bell = text("♧", 23, TEXT);
+        bell.setGravity(Gravity.CENTER);
+        top.addView(bell, new LinearLayout.LayoutParams(46, 48));
         p.addView(top, new LinearLayout.LayoutParams(-1, 48));
 
-        addSpace(p, 10);
+        addSpace(p, 2);
 
-        // Logo / welcome card
-        LinearLayout hero = card();
-        hero.setPadding(14, 12, 14, 12);
-        LinearLayout heroTop = new LinearLayout(this);
-        heroTop.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout hero = new LinearLayout(this);
+        hero.setOrientation(LinearLayout.VERTICAL);
+        hero.setGravity(Gravity.CENTER_HORIZONTAL);
+        hero.setPadding(8, 4, 8, 4);
 
         ImageView logo = new ImageView(this);
         logo.setImageResource(com.nexus.app.R.drawable.nexus_logo);
         logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        heroTop.addView(logo, new LinearLayout.LayoutParams(52, 52));
+        hero.addView(logo, new LinearLayout.LayoutParams(150, 150));
 
-        LinearLayout heroText = new LinearLayout(this);
-        heroText.setOrientation(LinearLayout.VERTICAL);
-        heroText.setGravity(Gravity.CENTER_VERTICAL);
-        heroText.setPadding(12, 0, 0, 0);
+        TextView heroTitle = text("Güvenli İletişim", 14, TEXT);
+        heroTitle.setGravity(Gravity.CENTER);
+        heroTitle.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        heroTitle.setIncludeFontPadding(true);
+        hero.addView(heroTitle, new LinearLayout.LayoutParams(-1, -2));
 
-        TextView welcome = text("NEXUS'a hoş geldin", 17, TEXT);
-        welcome.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        welcome.setIncludeFontPadding(false);
-        welcome.setMaxLines(1);
-        heroText.addView(welcome, new LinearLayout.LayoutParams(-1, -2));
-
-        TextView heroSub = text("Özel ve güvenli iletişim alanın hazır.", 10, MUTED);
-        heroSub.setIncludeFontPadding(false);
-        heroSub.setMaxLines(1);
-        heroText.addView(heroSub, new LinearLayout.LayoutParams(-1, -2));
-
-        heroTop.addView(heroText, new LinearLayout.LayoutParams(0, -2, 1));
-        hero.addView(heroTop);
-
-        LinearLayout status = new LinearLayout(this);
-        status.setGravity(Gravity.CENTER_VERTICAL);
-        TextView dot = text("●", 10, GREEN);
-        dot.setGravity(Gravity.CENTER);
-        status.addView(dot, new LinearLayout.LayoutParams(20, 22));
-        TextView connection = text("Bağlantı güvenli", 11, TEXT);
-        connection.setGravity(Gravity.CENTER_VERTICAL);
-        status.addView(connection, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView secure = text("KORUMALI", 9, GREEN);
-        secure.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        secure.setGravity(Gravity.CENTER);
-        status.addView(secure, new LinearLayout.LayoutParams(-2, -2));
-        hero.addView(status);
-        p.addView(hero);
-
-        addSpace(p, 12);
-
-        TextView section = text("Hızlı erişim", 17, TEXT);
-        section.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        section.setIncludeFontPadding(false);
-        p.addView(section);
-        addSpace(p, 7);
+        TextView heroSub = text("Güvenli Gelecek", 12, MUTED);
+        heroSub.setGravity(Gravity.CENTER);
+        hero.addView(heroSub, new LinearLayout.LayoutParams(-1, -2));
+        p.addView(hero, new LinearLayout.LayoutParams(-1, 190));
 
         LinearLayout row1 = new LinearLayout(this);
         row1.setGravity(Gravity.CENTER);
-        row1.addView(tile("✦", "Yeni sohbet", "Güvenli mesaj başlat", v -> showNewChat()),
-                new LinearLayout.LayoutParams(0, 92, 1));
-        row1.addView(new View(this), new LinearLayout.LayoutParams(8, 1));
-        row1.addView(tile("♙", "Kişiler", "NEXUS ID yönet", v -> showNewChat()),
-                new LinearLayout.LayoutParams(0, 92, 1));
+        row1.addView(tile("◌", "Sohbet", "Güvenli mesajlaş", v -> showNewChat()),
+                new LinearLayout.LayoutParams(0, 122, 1));
+        row1.addView(new View(this), new LinearLayout.LayoutParams(10, 1));
+        row1.addView(tile("♙", "Kişiler", "NEXUS ID ekle", v -> showNewChat()),
+                new LinearLayout.LayoutParams(0, 122, 1));
         p.addView(row1);
-
-        addSpace(p, 8);
-
-        LinearLayout row2 = new LinearLayout(this);
-        row2.setGravity(Gravity.CENTER);
-        row2.addView(tile("◇", "Gizlilik", "Güvenlik merkezi", v -> showPrivacy()),
-                new LinearLayout.LayoutParams(0, 92, 1));
-        row2.addView(new View(this), new LinearLayout.LayoutParams(8, 1));
-        row2.addView(tile("⚙", "Ayarlar", "NEXUS ayarları", v -> showPrivacy()),
-                new LinearLayout.LayoutParams(0, 92, 1));
-        p.addView(row2);
 
         addSpace(p, 10);
 
-        LinearLayout security = card();
-        security.setOrientation(LinearLayout.HORIZONTAL);
-        security.setGravity(Gravity.CENTER_VERTICAL);
-        security.setPadding(12, 10, 12, 10);
+        LinearLayout row2 = new LinearLayout(this);
+        row2.setGravity(Gravity.CENTER);
+        row2.addView(tile("♢", "Gizlilik", "Tam şifreleme", v -> showPrivacy()),
+                new LinearLayout.LayoutParams(0, 122, 1));
+        row2.addView(new View(this), new LinearLayout.LayoutParams(10, 1));
+        row2.addView(tile("⚙", "Ayarlar", "Uygulama ayarları", v -> showPrivacy()),
+                new LinearLayout.LayoutParams(0, 122, 1));
+        p.addView(row2);
 
-        TextView lock = text("▣", 21, BLUE);
-        lock.setGravity(Gravity.CENTER);
-        security.addView(lock, new LinearLayout.LayoutParams(38, 38));
+        LinearLayout.LayoutParams spacer = new LinearLayout.LayoutParams(-1, 0, 1);
+        p.addView(new View(this), spacer);
 
-        LinearLayout st = new LinearLayout(this);
-        st.setOrientation(LinearLayout.VERTICAL);
-        st.setGravity(Gravity.CENTER_VERTICAL);
-        st.setPadding(10, 0, 0, 0);
-        TextView st1 = text("Uçtan uca güvenlik", 13, TEXT);
-        st1.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        st1.setIncludeFontPadding(false);
-        st.addView(st1, new LinearLayout.LayoutParams(-1, -2));
-        TextView st2 = text("Mesajlar güvenlik katmanında korunur.", 10, MUTED);
-        st2.setIncludeFontPadding(false);
-        st.addView(st2, new LinearLayout.LayoutParams(-1, -2));
-        security.addView(st, new LinearLayout.LayoutParams(0, -2, 1));
-
-        TextView arrow = text("›", 23, MUTED);
-        arrow.setGravity(Gravity.CENTER);
-        security.addView(arrow, new LinearLayout.LayoutParams(28, 40));
-        security.setOnClickListener(v -> showPrivacy());
-        p.addView(security);
-
-        addSpace(p, 8);
-
-        // Bottom navigation kept compact so the complete home screen fits on common phones.
         LinearLayout nav = new LinearLayout(this);
         nav.setGravity(Gravity.CENTER);
-        nav.setPadding(4, 3, 4, 3);
-        nav.setBackground(bg(PANEL, 18));
+        nav.setPadding(4, 4, 4, 4);
+        nav.setBackground(bg(PANEL, 20));
 
-        TextView home = text("⌂\nAna Sayfa", 9, BLUE);
+        TextView home = text("⌂\nAna Sayfa", 10, BLUE);
         home.setGravity(Gravity.CENTER);
-        home.setIncludeFontPadding(false);
-        nav.addView(home, new LinearLayout.LayoutParams(0, 58, 1));
+        home.setIncludeFontPadding(true);
+        nav.addView(home, new LinearLayout.LayoutParams(0, 66, 1));
 
-        TextView chats = text("◌\nSohbetler", 9, MUTED);
+        TextView chats = text("◌\nSohbetler", 10, MUTED);
         chats.setGravity(Gravity.CENTER);
-        chats.setIncludeFontPadding(false);
+        chats.setIncludeFontPadding(true);
         chats.setOnClickListener(v -> showNewChat());
-        nav.addView(chats, new LinearLayout.LayoutParams(0, 58, 1));
+        nav.addView(chats, new LinearLayout.LayoutParams(0, 66, 1));
 
-        TextView people = text("♙\nKişiler", 9, MUTED);
+        TextView people = text("♙\nKişiler", 10, MUTED);
         people.setGravity(Gravity.CENTER);
-        people.setIncludeFontPadding(false);
+        people.setIncludeFontPadding(true);
         people.setOnClickListener(v -> showNewChat());
-        nav.addView(people, new LinearLayout.LayoutParams(0, 58, 1));
+        nav.addView(people, new LinearLayout.LayoutParams(0, 66, 1));
 
-        TextView settings = text("⚙\nAyarlar", 9, MUTED);
+        TextView settings = text("⚙\nAyarlar", 10, MUTED);
         settings.setGravity(Gravity.CENTER);
-        settings.setIncludeFontPadding(false);
+        settings.setIncludeFontPadding(true);
         settings.setOnClickListener(v -> showPrivacy());
-        nav.addView(settings, new LinearLayout.LayoutParams(0, 58, 1));
+        nav.addView(settings, new LinearLayout.LayoutParams(0, 66, 1));
         p.addView(nav);
 
         clearAndShow(p);
