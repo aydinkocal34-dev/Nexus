@@ -126,29 +126,27 @@ public final class MainActivity extends Activity {
         root.addView(page, new LinearLayout.LayoutParams(-1, -1));
     }
 
-    private LinearLayout tile(String icon, String name, String sub, View.OnClickListener click) {
+    private LinearLayout tile(int iconRes, String name, String sub, View.OnClickListener click) {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER);
         box.setPadding(8, 8, 8, 8);
-        box.setBackground(bg(CARD, 18));
+        box.setBackground(bg(CARD, 20));
 
-        TextView iconView = text(icon, 24, BLUE);
-        iconView.setGravity(Gravity.CENTER);
-        iconView.setIncludeFontPadding(true);
-        GradientDrawable iconBg = bg(PANEL, 28);
-        iconView.setBackground(iconBg);
-        box.addView(iconView, new LinearLayout.LayoutParams(48, 48));
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(iconRes);
+        icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        icon.setBackground(bg(Color.rgb(14, 40, 72), 30));
+        box.addView(icon, new LinearLayout.LayoutParams(54, 54));
 
         TextView nameView = text(name, 15, TEXT);
         nameView.setGravity(Gravity.CENTER);
         nameView.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        nameView.setIncludeFontPadding(true);
+        nameView.setPadding(0, 5, 0, 0);
         box.addView(nameView, new LinearLayout.LayoutParams(-1, -2));
 
         TextView subView = text(sub, 10, MUTED);
         subView.setGravity(Gravity.CENTER);
-        subView.setIncludeFontPadding(true);
         subView.setMaxLines(1);
         box.addView(subView, new LinearLayout.LayoutParams(-1, -2));
 
@@ -159,96 +157,91 @@ public final class MainActivity extends Activity {
     private void showHome() {
         final LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(10, 6, 10, 8);
+        root.setPadding(12, 5, 12, 8);
         root.setBackgroundColor(BG);
 
-        // Reference header: menu / NEXUS / bell
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView menu = text("☰", 24, TEXT);
-        menu.setGravity(Gravity.CENTER);
-        header.addView(menu, new LinearLayout.LayoutParams(44, 48));
+        ImageView menu = new ImageView(this);
+        menu.setImageResource(R.drawable.ic_menu);
+        menu.setPadding(6, 6, 6, 6);
+        header.addView(menu, new LinearLayout.LayoutParams(46, 52));
 
         TextView brand = text("NEXUS", 20, TEXT);
         brand.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         brand.setGravity(Gravity.CENTER);
-        header.addView(brand, new LinearLayout.LayoutParams(0, 48, 1));
+        header.addView(brand, new LinearLayout.LayoutParams(0, 52, 1));
 
-        TextView bell = text("♧", 23, TEXT);
-        bell.setGravity(Gravity.CENTER);
-        header.addView(bell, new LinearLayout.LayoutParams(44, 48));
+        ImageView bell = new ImageView(this);
+        bell.setImageResource(R.drawable.ic_bell);
+        bell.setPadding(7, 7, 7, 7);
+        header.addView(bell, new LinearLayout.LayoutParams(46, 52));
         root.addView(header);
 
-        // Reference logo block
         LinearLayout logoBlock = new LinearLayout(this);
         logoBlock.setOrientation(LinearLayout.VERTICAL);
         logoBlock.setGravity(Gravity.CENTER_HORIZONTAL);
 
         ImageView logo = new ImageView(this);
-        logo.setImageResource(com.nexus.app.R.drawable.nexus_logo);
+        logo.setImageResource(R.drawable.nexus_logo);
         logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        logoBlock.addView(logo, new LinearLayout.LayoutParams(132, 132));
+        logoBlock.addView(logo, new LinearLayout.LayoutParams(154, 154));
 
-        TextView safeTitle = text("Güvenli İletişim", 14, TEXT);
+        TextView safeTitle = text("Güvenli İletişim", 16, TEXT);
         safeTitle.setGravity(Gravity.CENTER);
         safeTitle.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         logoBlock.addView(safeTitle, new LinearLayout.LayoutParams(-1, -2));
 
-        TextView safeSub = text("Güvenli Gelecek", 11, MUTED);
+        TextView safeSub = text("Güvenli Gelecek", 13, MUTED);
         safeSub.setGravity(Gravity.CENTER);
         logoBlock.addView(safeSub, new LinearLayout.LayoutParams(-1, -2));
 
         root.addView(logoBlock, new LinearLayout.LayoutParams(-1, -2));
+        addSpace(root, 14);
 
-        addSpace(root, 12);
-
-        // Reference 2x2 cards
         LinearLayout row1 = new LinearLayout(this);
         row1.setGravity(Gravity.CENTER);
-        row1.addView(tile("◌", "Sohbet", "Güvenli mesajlaş", v -> showNewChat()),
-                new LinearLayout.LayoutParams(0, 118, 1));
-        row1.addView(new View(this), new LinearLayout.LayoutParams(10, 1));
-        row1.addView(tile("♙", "Kişiler", "NEXUS ID ekle", v -> showNewChat()),
-                new LinearLayout.LayoutParams(0, 118, 1));
+        row1.addView(tile(R.drawable.ic_chat, "Sohbet", "Güvenli mesajlaş", v -> showNewChat()),
+                new LinearLayout.LayoutParams(0, 126, 1));
+        row1.addView(new View(this), new LinearLayout.LayoutParams(12, 1));
+        row1.addView(tile(R.drawable.ic_people, "Kişiler", "NEXUS ID ekle", v -> showNewChat()),
+                new LinearLayout.LayoutParams(0, 126, 1));
         root.addView(row1);
 
-        addSpace(root, 10);
+        addSpace(root, 11);
 
         LinearLayout row2 = new LinearLayout(this);
         row2.setGravity(Gravity.CENTER);
-        row2.addView(tile("♢", "Gizlilik", "Tam şifreleme", v -> showPrivacy()),
-                new LinearLayout.LayoutParams(0, 118, 1));
-        row2.addView(new View(this), new LinearLayout.LayoutParams(10, 1));
-        row2.addView(tile("⚙", "Ayarlar", "Uygulama ayarları", v -> showPrivacy()),
-                new LinearLayout.LayoutParams(0, 118, 1));
+        row2.addView(tile(R.drawable.ic_shield, "Gizlilik", "Tam şifreleme", v -> showPrivacy()),
+                new LinearLayout.LayoutParams(0, 126, 1));
+        row2.addView(new View(this), new LinearLayout.LayoutParams(12, 1));
+        row2.addView(tile(R.drawable.ic_settings, "Ayarlar", "Uygulama ayarları", v -> showPrivacy()),
+                new LinearLayout.LayoutParams(0, 126, 1));
         root.addView(row2);
 
-        // Push navigation to bottom, like the reference.
         root.addView(new View(this), new LinearLayout.LayoutParams(-1, 0, 1));
 
         LinearLayout nav = new LinearLayout(this);
         nav.setGravity(Gravity.CENTER);
-        nav.setPadding(4, 3, 4, 3);
-        nav.setBackground(bg(PANEL, 18));
+        nav.setPadding(3, 3, 3, 3);
+        nav.setBackground(bg(Color.rgb(7, 19, 33), 20));
 
-        TextView home = navItem("⌂", "Ana Sayfa", BLUE);
-        nav.addView(home, new LinearLayout.LayoutParams(0, 62, 1));
+        nav.addView(navItem("⌂", "Ana Sayfa", BLUE), new LinearLayout.LayoutParams(0, 66, 1));
 
         TextView chats = navItem("◌", "Sohbetler", MUTED);
         chats.setOnClickListener(v -> showNewChat());
-        nav.addView(chats, new LinearLayout.LayoutParams(0, 62, 1));
+        nav.addView(chats, new LinearLayout.LayoutParams(0, 66, 1));
 
         TextView people = navItem("♙", "Kişiler", MUTED);
         people.setOnClickListener(v -> showNewChat());
-        nav.addView(people, new LinearLayout.LayoutParams(0, 62, 1));
+        nav.addView(people, new LinearLayout.LayoutParams(0, 66, 1));
 
         TextView settings = navItem("⚙", "Ayarlar", MUTED);
         settings.setOnClickListener(v -> showPrivacy());
-        nav.addView(settings, new LinearLayout.LayoutParams(0, 62, 1));
+        nav.addView(settings, new LinearLayout.LayoutParams(0, 66, 1));
 
         root.addView(nav);
-
         clearAndShow(root);
     }
 
