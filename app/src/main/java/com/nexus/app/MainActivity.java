@@ -163,7 +163,7 @@ public final class MainActivity extends Activity {
 
         TextView menu = text("☰", 23, TEXT);
         menu.setGravity(Gravity.CENTER);
-        top.addView(menu, new LinearLayout.LayoutParams(44, 44));
+        top.addView(menu, new LinearLayout.LayoutParams(44, 48));
 
         LinearLayout brandBox = new LinearLayout(this);
         brandBox.setOrientation(LinearLayout.VERTICAL);
@@ -171,20 +171,20 @@ public final class MainActivity extends Activity {
         TextView brand = title("NEXUS");
         brand.setTextSize(20);
         brand.setGravity(Gravity.CENTER);
-        brand.setIncludeFontPadding(false);
-        brandBox.addView(brand, new LinearLayout.LayoutParams(-1, 24));
+        brand.setIncludeFontPadding(true);
+        brandBox.addView(brand, new LinearLayout.LayoutParams(-1, -2));
         TextView online = text("GÜVENLİ AĞ • AKTİF", 8, GREEN);
         online.setGravity(Gravity.CENTER);
-        online.setIncludeFontPadding(false);
-        brandBox.addView(online, new LinearLayout.LayoutParams(-1, 14));
-        top.addView(brandBox, new LinearLayout.LayoutParams(0, 44, 1));
+        online.setIncludeFontPadding(true);
+        brandBox.addView(online, new LinearLayout.LayoutParams(-1, -2));
+        top.addView(brandBox, new LinearLayout.LayoutParams(0, -2, 1));
 
         TextView profile = text("A", 17, TEXT);
         profile.setGravity(Gravity.CENTER);
         profile.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         profile.setBackground(bg(BLUE, 24));
         top.addView(profile, new LinearLayout.LayoutParams(40, 40));
-        p.addView(top);
+        p.addView(top, new LinearLayout.LayoutParams(-1, 48));
 
         addSpace(p, 10);
 
@@ -225,11 +225,11 @@ public final class MainActivity extends Activity {
         status.addView(dot, new LinearLayout.LayoutParams(20, 22));
         TextView connection = text("Bağlantı güvenli", 11, TEXT);
         connection.setGravity(Gravity.CENTER_VERTICAL);
-        status.addView(connection, new LinearLayout.LayoutParams(0, 22, 1));
+        status.addView(connection, new LinearLayout.LayoutParams(0, -2, 1));
         TextView secure = text("KORUMALI", 9, GREEN);
         secure.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         secure.setGravity(Gravity.CENTER);
-        status.addView(secure, new LinearLayout.LayoutParams(-2, 22));
+        status.addView(secure, new LinearLayout.LayoutParams(-2, -2));
         hero.addView(status);
         p.addView(hero);
 
@@ -302,25 +302,25 @@ public final class MainActivity extends Activity {
         TextView home = text("⌂\nAna Sayfa", 9, BLUE);
         home.setGravity(Gravity.CENTER);
         home.setIncludeFontPadding(false);
-        nav.addView(home, new LinearLayout.LayoutParams(0, 52, 1));
+        nav.addView(home, new LinearLayout.LayoutParams(0, 58, 1));
 
         TextView chats = text("◌\nSohbetler", 9, MUTED);
         chats.setGravity(Gravity.CENTER);
         chats.setIncludeFontPadding(false);
         chats.setOnClickListener(v -> showNewChat());
-        nav.addView(chats, new LinearLayout.LayoutParams(0, 52, 1));
+        nav.addView(chats, new LinearLayout.LayoutParams(0, 58, 1));
 
         TextView people = text("♙\nKişiler", 9, MUTED);
         people.setGravity(Gravity.CENTER);
         people.setIncludeFontPadding(false);
         people.setOnClickListener(v -> showNewChat());
-        nav.addView(people, new LinearLayout.LayoutParams(0, 52, 1));
+        nav.addView(people, new LinearLayout.LayoutParams(0, 58, 1));
 
         TextView settings = text("⚙\nAyarlar", 9, MUTED);
         settings.setGravity(Gravity.CENTER);
         settings.setIncludeFontPadding(false);
         settings.setOnClickListener(v -> showPrivacy());
-        nav.addView(settings, new LinearLayout.LayoutParams(0, 52, 1));
+        nav.addView(settings, new LinearLayout.LayoutParams(0, 58, 1));
         p.addView(nav);
 
         clearAndShow(p);
