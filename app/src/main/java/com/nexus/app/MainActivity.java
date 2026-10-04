@@ -203,8 +203,16 @@ public final class MainActivity extends Activity {
         p.addView(bar);show(p);
     }
 
-    private void appendMessage(String s,boolean mine){TextView m=text(s+"
-"+(mine?"✓✓":"●"),14,TEXT);m.setPadding(14,12,14,12);m.setBackground(bg(mine?BLUE:CARD,16));LinearLayout.LayoutParams q=new LinearLayout.LayoutParams(-2,-2);q.gravity=mine?Gravity.RIGHT:Gravity.LEFT;q.topMargin=10;messages.addView(m,q);}
+    private void appendMessage(String s,boolean mine){
+        TextView m=text(s+"\\n"+(mine?"OK":"NEW"),14,TEXT);
+        m.setPadding(dp(14),dp(12),dp(14),dp(12));
+        m.setBackground(bg(mine?BLUE:CARD,dp(16)));
+        LinearLayout.LayoutParams q=new LinearLayout.LayoutParams(-2,-2);
+        q.gravity=mine?Gravity.RIGHT:Gravity.LEFT;
+        q.topMargin=dp(10);
+        messages.addView(m,q);
+    }
+
     private void saveMessage(String peer,String msg,boolean mine){String k="msg_"+peer;Set<String> old=prefs.getStringSet(k,new HashSet<>());HashSet<String> n=new HashSet<>(old);n.add((mine?"1|":"0|")+msg);prefs.edit().putStringSet(k,n).apply();}
     private void loadLocalMessages(String peer){for(String x:prefs.getStringSet("msg_"+peer,new HashSet<>())){int i=x.indexOf('|');appendMessage(i>0?x.substring(i+1):x,i>0&&x.charAt(0)=='1');}}
 
