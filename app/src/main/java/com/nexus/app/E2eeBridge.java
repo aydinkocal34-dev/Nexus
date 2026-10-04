@@ -17,8 +17,9 @@ final class E2eeBridge {
     private final Method sendText;
 
     E2eeBridge(Context context, String localPeerId, Listener listener) throws Exception {
-        Class<?> runtimeClass = Class.forName("com.nexus.app.E2eeRuntime", true, context.getClassLoader());
-        Class<?> listenerClass = Class.forName("com.nexus.app.E2eeRuntime$Listener", true, context.getClassLoader());
+        ClassLoader loader = context.getClassLoader();
+        Class<?> runtimeClass = Class.forName("com.nexus.app.E2eeRuntime", true, loader);
+        Class<?> listenerClass = Class.forName("com.nexus.app.E2eeRuntime$Listener", true, loader);
 
         Object proxy = Proxy.newProxyInstance(
                 listenerClass.getClassLoader(),
@@ -33,8 +34,19 @@ final class E2eeBridge {
                     return null;
                 });
 
-        Constructor<?> ctor = runtimeClass.getDeclaredConstructor(Context.class, String.class, E2eeRuntime.Listener.class);
-        runtime = ctor.newInstance(context, localPeerId, proxy);
+        Constructor<?> target = null;
+        for (Constructor<?> c : runtimeClass.getDeclaredConstructors()) {
+            Class<?>[] p = c.getParameterTypes();
+            if (p.length == 4 && p[0] == Context.class && p[1] == String.class
+                    && p[2] == int.class && p[3] == listenerClass) {
+                target = c;
+                break;
+            }
+        }
+        if (target == null) throw new NoSuchMethodException("E2eeRuntime constructor not found");
+        target.setAccessible(true);
+
+        runtime = target.newInstance(context, localPeerId, 1, proxy);
         connect = runtimeClass.getDeclaredMethod("connect", String.class);
         sendText = runtimeClass.getDeclaredMethod("sendText", String.class, int.class, String.class);
         connect.setAccessible(true);
