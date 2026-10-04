@@ -112,6 +112,15 @@ public final class MainActivity extends Activity {
         if (back != null) h.addView(iconButton("‹", back), new LinearLayout.LayoutParams(46, 46));
         TextView t = title(titleText);
         h.addView(t, new LinearLayout.LayoutParams(0, 50, 1));
+        // Every inner page gets a persistent Home button so the user can always return
+        // directly to the NEXUS home screen.
+        TextView home = text("⌂", 25, BLUE);
+        home.setGravity(Gravity.CENTER);
+        home.setContentDescription("Ana sayfaya dön");
+        home.setBackground(bg(CARD, 24));
+        home.setOnClickListener(v -> showHome());
+        h.addView(home, new LinearLayout.LayoutParams(46, 46));
+
         TextView menu = text("⋮", 24, MUTED);
         menu.setGravity(Gravity.CENTER);
         h.addView(menu, new LinearLayout.LayoutParams(42, 46));
