@@ -130,22 +130,25 @@ public final class MainActivity extends Activity {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER);
-        box.setPadding(8, 10, 8, 10);
+        box.setPadding(8, 12, 8, 12);
         box.setBackground(bg(CARD, 18));
-        TextView i = text(icon, 22, BLUE);
+
+        TextView i = text(icon, 21, BLUE);
         i.setGravity(Gravity.CENTER);
-        box.addView(i, new LinearLayout.LayoutParams(-1, 30));
+        i.setIncludeFontPadding(false);
+        box.addView(i, new LinearLayout.LayoutParams(-1, 28));
+
         TextView n = text(name, 14, TEXT);
-        n.setMaxLines(1);
-        n.setEllipsize(android.text.TextUtils.TruncateAt.END);
         n.setGravity(Gravity.CENTER);
         n.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        box.addView(n, new LinearLayout.LayoutParams(-1, 26));
+        n.setIncludeFontPadding(false);
+        box.addView(n, new LinearLayout.LayoutParams(-1, -2));
+
         TextView s = text(sub, 10, MUTED);
-        s.setMaxLines(1);
-        s.setEllipsize(android.text.TextUtils.TruncateAt.END);
         s.setGravity(Gravity.CENTER);
-        box.addView(s, new LinearLayout.LayoutParams(-1, 22));
+        s.setIncludeFontPadding(false);
+        box.addView(s, new LinearLayout.LayoutParams(-1, -2));
+
         box.setOnClickListener(click);
         return box;
     }
@@ -196,9 +199,9 @@ public final class MainActivity extends Activity {
         heroText.setPadding(14, 0, 0, 0);
         TextView welcome = text("NEXUS'a hoş geldin", 18, TEXT);
         welcome.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        heroText.addView(welcome);
-        heroText.addView(text("Özel ve güvenli iletişim alanın hazır.", 12, MUTED));
-        heroTop.addView(heroText, new LinearLayout.LayoutParams(0, 56, 1));
+        welcome.setIncludeFontPadding(false);\n        welcome.setMaxLines(1);\n        heroText.addView(welcome);
+        TextView heroSub = text("Özel ve güvenli iletişim alanın hazır.", 11, MUTED);\n        heroSub.setIncludeFontPadding(false);\n        heroSub.setMaxLines(2);\n        heroText.addView(heroSub);
+        heroTop.addView(heroText, new LinearLayout.LayoutParams(0, -2, 1));
         hero.addView(heroTop);
 
         addSpace(hero, 12);
@@ -221,10 +224,10 @@ public final class MainActivity extends Activity {
 
         LinearLayout row1 = new LinearLayout(this);
         row1.addView(tile("✦", "Yeni sohbet", "Güvenli mesaj başlat", v -> showNewChat()),
-                new LinearLayout.LayoutParams(0, 112, 1));
+                new LinearLayout.LayoutParams(0, -2, 1));
         row1.addView(new View(this), new LinearLayout.LayoutParams(10, 1));
         row1.addView(tile("♙", "Kişiler", "NEXUS ID yönet", v -> showNewChat()),
-                new LinearLayout.LayoutParams(0, 126, 1));
+                new LinearLayout.LayoutParams(0, -2, 1));
         p.addView(row1);
 
         addSpace(p, 10);
@@ -264,22 +267,22 @@ public final class MainActivity extends Activity {
 
         TextView home = text("⌂\nAna Sayfa", 10, BLUE);
         home.setGravity(Gravity.CENTER);
-        nav.addView(home, new LinearLayout.LayoutParams(0, 62, 1));
+        nav.addView(home, new LinearLayout.LayoutParams(0, 72, 1));
 
         TextView chats = text("◌\nSohbetler", 10, MUTED);
         chats.setGravity(Gravity.CENTER);
         chats.setOnClickListener(v -> showNewChat());
-        nav.addView(chats, new LinearLayout.LayoutParams(0, 58, 1));
+        nav.addView(chats, new LinearLayout.LayoutParams(0, 72, 1));
 
         TextView people = text("♙\nKişiler", 10, MUTED);
         people.setGravity(Gravity.CENTER);
         people.setOnClickListener(v -> showNewChat());
-        nav.addView(people, new LinearLayout.LayoutParams(0, 58, 1));
+        nav.addView(people, new LinearLayout.LayoutParams(0, 72, 1));
 
         TextView settings = text("⚙\nAyarlar", 10, MUTED);
         settings.setGravity(Gravity.CENTER);
         settings.setOnClickListener(v -> showPrivacy());
-        nav.addView(settings, new LinearLayout.LayoutParams(0, 58, 1));
+        nav.addView(settings, new LinearLayout.LayoutParams(0, 72, 1));
         p.addView(nav);
 
         clearAndShow(p);
