@@ -71,10 +71,23 @@ public class MainActivity extends Activity implements RealE2eeTransport.Listener
         }
         relayWss=p.getString("relayWss","wss://nexus-blind-relay.onrender.com");
         createNotificationChannel();
-        try { transport=new RealE2eeTransport(this,localPeerId,1,this); } catch(Exception ignored) {}
-        if(!relayWss.isEmpty() && transport!=null) transport.connect(relayWss);
         showHome();
     }
+    private boolean ensureTransport(){
+        if(transport!=null) return true;
+        try {
+            transport=new RealE2eeTransport(this,localPeerId,1,this);
+            return true;
+        } catch(Exception e) {
+            if(connectionStatus!=null) connectionStatus.setText("● E2EE HAZIR DEĞİL");
+            android.widget.Toast.makeText(this,"E2EE başlatılamadı: "+e.getMessage(),android.widget.Toast.LENGTH_LONG).show();
+            return false;
+        }
+    }
+    private void connectRelay(){
+        if(ensureTransport() && !relayWss.isEmpty()) transport.connect(relayWss);
+    }
+
     private void base(String title){
         root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(BG);
         LinearLayout bar=new LinearLayout(this); bar.setGravity(Gravity.CENTER_VERTICAL); bar.setPadding(dp(14),dp(8),dp(14),dp(4));
@@ -227,7 +240,8 @@ public class MainActivity extends Activity implements RealE2eeTransport.Listener
         Button send=button("➤"); composer.addView(send,new LinearLayout.LayoutParams(dp(60),dp(52)));
         root.addView(composer,new LinearLayout.LayoutParams(-1,dp(64)));
         send.setOnClickListener(v->{String msg=input.getText().toString().trim();if(msg.isEmpty())return;
-            if(transport==null||relayWss.isEmpty()){input.setError("Önce Ayarlar'dan WSS Relay bağla");return;}
+            if(!ensureTransport()) return;
+            connectRelay();
             transport.sendText(peer,1,msg); messages.add(msg);input.setText("");showChat(peer);});
     }
 }
