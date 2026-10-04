@@ -52,7 +52,11 @@ public final class MainActivity extends Activity {
     private void show(LinearLayout p){root.removeAllViews();root.addView(p,new LinearLayout.LayoutParams(-1,-1));}
     private void header(LinearLayout p,String t,String sub,View.OnClickListener back){
         LinearLayout h=new LinearLayout(this);h.setGravity(Gravity.CENTER_VERTICAL);
-        if(back!=null)h.addView(icon("‹",back),new LinearLayout.LayoutParams(dp(46),dp(46)));\n        h.addView(title(t),new LinearLayout.LayoutParams(0,dp(56),1));\n        TextView home=icon("⌂",v->showHome());home.setTextColor(BLUE);h.addView(home,new LinearLayout.LayoutParams(dp(46),dp(46)));\n        p.addView(h,new LinearLayout.LayoutParams(-1,dp(58)));\n        if(sub!=null&&!sub.isEmpty())p.addView(text(sub,13,MUTED),new LinearLayout.LayoutParams(-1,-2));
+        if(back!=null)h.addView(icon("‹",back),new LinearLayout.LayoutParams(dp(46),dp(46)));
+        h.addView(title(t),new LinearLayout.LayoutParams(0,dp(56),1));
+        TextView home=icon("⌂",v->showHome());home.setTextColor(BLUE);h.addView(home,new LinearLayout.LayoutParams(dp(46),dp(46)));
+        p.addView(h,new LinearLayout.LayoutParams(-1,dp(58)));
+        if(sub!=null&&!sub.isEmpty())p.addView(text(sub,13,MUTED),new LinearLayout.LayoutParams(-1,-2));
     }
     private LinearLayout tile(int res,String name,String sub,View.OnClickListener l){
         LinearLayout box=new LinearLayout(this);
@@ -73,7 +77,8 @@ public final class MainActivity extends Activity {
         return box;
     }
 
-    private TextView nav(String i,String s,int c){TextView v=text(i+"\n"+s,10,c);v.setGravity(Gravity.CENTER);return v;}
+    private TextView nav(String i,String s,int c){TextView v=text(i+"
+"+s,10,c);v.setGravity(Gravity.CENTER);return v;}
 
     private void showHome(){
         // Reference layout: normal Android dp sizing, generous spacing, no overlap.
@@ -151,7 +156,9 @@ public final class MainActivity extends Activity {
     private void showChats(){
         LinearLayout p=screen();header(p,english?"Chats":"Sohbetler",english?"Encrypted conversations":"Şifreli konuşmalar",v->showHome());
         space(p,12);
-        if(contactIds.isEmpty()){TextView empty=text(english?"No conversations yet\nAdd a NEXUS ID to start.":"Henüz sohbet yok\nBaşlamak için NEXUS ID ekleyin.",15,MUTED);empty.setGravity(Gravity.CENTER);p.addView(empty,new LinearLayout.LayoutParams(-1,0,1));}
+        if(contactIds.isEmpty()){TextView empty=text(english?"No conversations yet
+Add a NEXUS ID to start.":"Henüz sohbet yok
+Başlamak için NEXUS ID ekleyin.",15,MUTED);empty.setGravity(Gravity.CENTER);p.addView(empty,new LinearLayout.LayoutParams(-1,0,1));}
         else{
             LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);
             for(String id:contactIds){LinearLayout c=card();TextView a=text("●  "+id,16,TEXT);a.setTypeface(Typeface.DEFAULT,Typeface.BOLD);c.addView(a);c.addView(text(english?"Tap to open encrypted chat":"Şifreli sohbeti açmak için dokunun",12,MUTED));c.setOnClickListener(v->showChat(id));list.addView(c,new LinearLayout.LayoutParams(-1,dp(78)));space(list,dp(8));}
@@ -198,7 +205,8 @@ public final class MainActivity extends Activity {
         p.addView(bar);show(p);
     }
 
-    private void appendMessage(String s,boolean mine){TextView m=text(s+"\n"+(mine?"✓✓":"●"),14,TEXT);m.setPadding(14,12,14,12);m.setBackground(bg(mine?BLUE:CARD,16));LinearLayout.LayoutParams q=new LinearLayout.LayoutParams(-2,-2);q.gravity=mine?Gravity.RIGHT:Gravity.LEFT;q.topMargin=10;messages.addView(m,q);}
+    private void appendMessage(String s,boolean mine){TextView m=text(s+"
+"+(mine?"✓✓":"●"),14,TEXT);m.setPadding(14,12,14,12);m.setBackground(bg(mine?BLUE:CARD,16));LinearLayout.LayoutParams q=new LinearLayout.LayoutParams(-2,-2);q.gravity=mine?Gravity.RIGHT:Gravity.LEFT;q.topMargin=10;messages.addView(m,q);}
     private void saveMessage(String peer,String msg,boolean mine){String k="msg_"+peer;Set<String> old=prefs.getStringSet(k,new HashSet<>());HashSet<String> n=new HashSet<>(old);n.add((mine?"1|":"0|")+msg);prefs.edit().putStringSet(k,n).apply();}
     private void loadLocalMessages(String peer){for(String x:prefs.getStringSet("msg_"+peer,new HashSet<>())){int i=x.indexOf('|');appendMessage(i>0?x.substring(i+1):x,i>0&&x.charAt(0)=='1');}}
 
@@ -220,7 +228,9 @@ public final class MainActivity extends Activity {
         p.addView(new View(this),new LinearLayout.LayoutParams(-1,0,1));p.addView(text(english?"Notifications, device identity, contacts and encrypted message state are persisted locally.":"Bildirimler, cihaz kimliği, kişiler ve şifreli mesaj durumu cihazda saklanır.",12,MUTED));show(p);
     }
 
-    private void showNotifications(){LinearLayout p=screen();header(p,english?"Notifications":"Bildirimler",english?"Message alerts":"Mesaj bildirimleri",v->showHome());space(p,20);TextView t=text(english?"Notifications are enabled by Android permission.\nNew encrypted messages are surfaced here.":"Bildirimler Android izni ile çalışır.\nYeni şifreli mesajlar burada gösterilir.",15,MUTED);t.setGravity(Gravity.CENTER);p.addView(t,new LinearLayout.LayoutParams(-1,0,1));show(p);}
+    private void showNotifications(){LinearLayout p=screen();header(p,english?"Notifications":"Bildirimler",english?"Message alerts":"Mesaj bildirimleri",v->showHome());space(p,20);TextView t=text(english?"Notifications are enabled by Android permission.
+New encrypted messages are surfaced here.":"Bildirimler Android izni ile çalışır.
+Yeni şifreli mesajlar burada gösterilir.",15,MUTED);t.setGravity(Gravity.CENTER);p.addView(t,new LinearLayout.LayoutParams(-1,0,1));show(p);}
 
     private void connectRelay(String url){
         if(!url.startsWith("wss://")){toast(english?"Relay must use WSS/TLS":"Relay WSS/TLS kullanmalı");return;}
