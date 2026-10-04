@@ -40,6 +40,7 @@ android {
     // They are not used by the Android app and make the sideloaded APK unnecessarily huge.
     packaging {
         jniLibs {
+            useLegacyPackaging true
             excludes += ["**/*_testing*"]
         }
         resources {
