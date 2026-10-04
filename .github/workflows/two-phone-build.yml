@@ -27,6 +27,16 @@ jobs:
           printf 'rootProject.name="bootstrap"\n' > settings.gradle
           gradle wrapper --gradle-version 9.5.1
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Relay server tests
+        run: |
+          cd server
+          npm install
+          npm test
+
       - name: JVM tests
         run: /tmp/nexus-gradle/gradlew -p "$GITHUB_WORKSPACE" :app:test --stacktrace
 
