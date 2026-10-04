@@ -284,8 +284,7 @@ public final class MainActivity extends Activity {
     }
 
     private TextView navItem(String icon, String label, int color) {
-        TextView v = text(icon + "
-" + label, 10, color);
+        TextView v = text(icon + "\\n" + label, 10, color);
         v.setGravity(Gravity.CENTER);
         v.setIncludeFontPadding(true);
         return v;
@@ -313,10 +312,7 @@ public final class MainActivity extends Activity {
 
         addSpace(p, 0);
         LinearLayout.LayoutParams empty = new LinearLayout.LayoutParams(-1, 0, 1);
-        TextView no = text("♙
-
-Henüz kişi yok
-Sohbete başlamak için bir NEXUS ID ekleyin.", 15, MUTED);
+        TextView no = text("♙\\n\\nHenüz kişi yok\\nSohbete başlamak için bir NEXUS ID ekleyin.", 15, MUTED);
         no.setGravity(Gravity.CENTER);
         p.addView(no, empty);
 
@@ -353,9 +349,7 @@ Sohbete başlamak için bir NEXUS ID ekleyin.", 15, MUTED);
         qr.setPadding(8, 18, 8, 18);
         p.addView(qr);
         LinearLayout.LayoutParams fill = new LinearLayout.LayoutParams(-1, 0, 1);
-        TextView secure = text("▣
-Uçtan uca şifreleme
-Bu sohbet sadece sizin ve karşı tarafın cihazında okunabilir.", 13, MUTED);
+        TextView secure = text("▣\\nUçtan uca şifreleme\\nBu sohbet sadece sizin ve karşı tarafın cihazında okunabilir.", 13, MUTED);
         secure.setGravity(Gravity.CENTER);
         p.addView(secure, fill);
         clearAndShow(p);
@@ -404,21 +398,18 @@ Bu sohbet sadece sizin ve karşı tarafın cihazında okunabilir.", 13, MUTED);
 
         LinearLayout messages = new LinearLayout(this);
         messages.setOrientation(LinearLayout.VERTICAL);
-        TextView incoming = text("Merhaba
-09:34", 14, TEXT);
+        TextView incoming = text("Merhaba\\n09:34", 14, TEXT);
         incoming.setPadding(14, 12, 14, 12);
         incoming.setBackground(bg(CARD, 16));
         messages.addView(incoming, new LinearLayout.LayoutParams(-2, -2));
-        TextView outgoing = text("Merhaba
-Nasılsın?  ✓✓", 14, TEXT);
+        TextView outgoing = text("Merhaba\\nNasılsın?  ✓✓", 14, TEXT);
         outgoing.setPadding(14, 12, 14, 12);
         outgoing.setBackground(bg(BLUE, 16));
         LinearLayout.LayoutParams op = new LinearLayout.LayoutParams(-2, -2);
         op.gravity = Gravity.RIGHT;
         op.topMargin = 10;
         messages.addView(outgoing, op);
-        TextView reply = text("İyiyim, sen nasılsın?
-09:35", 14, TEXT);
+        TextView reply = text("İyiyim, sen nasılsın?\\n09:35", 14, TEXT);
         reply.setPadding(14, 12, 14, 12);
         reply.setBackground(bg(CARD, 16));
         LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-2, -2);
@@ -439,8 +430,7 @@ Nasılsın?  ✓✓", 14, TEXT);
         send.setOnClickListener(v -> {
             String msg = input.getText().toString().trim();
             if (!msg.isEmpty()) {
-                TextView sent = text(msg + "\
-şimdi  ✓", 14, TEXT);
+                TextView sent = text(msg + "\\nşimdi  ✓", 14, TEXT);
                 sent.setPadding(14, 12, 14, 12);
                 sent.setBackground(bg(BLUE, 16));
                 LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-2, -2);
