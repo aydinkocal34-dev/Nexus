@@ -26,7 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public class MainActivity extends Activity implements RealE2eeTransport.Listener {
+public class MainActivity extends Activity {
     private static final int BG=Color.rgb(4,13,25), CARD=Color.rgb(12,28,48), CARD2=Color.rgb(18,39,65);
     private static final int TEXT=Color.WHITE, MUTED=Color.rgb(166,184,207), BLUE=Color.rgb(18,139,255);
     private LinearLayout root, content;
@@ -35,7 +35,7 @@ public class MainActivity extends Activity implements RealE2eeTransport.Listener
     private String localPeerId="";
     private String relayWss="wss://nexus-blind-relay.onrender.com";
     private TextView connectionStatus;
-    private RealE2eeTransport transport;
+    private E2eeRuntime e2eeRuntime;
     private final android.os.Handler handler=new android.os.Handler();
     private static final String PREFS="nexus_runtime";
     private static final String CHANNEL="nexus_messages";
@@ -74,20 +74,32 @@ public class MainActivity extends Activity implements RealE2eeTransport.Listener
         showHome();
     }
     private boolean ensureTransport(){
-        if(transport!=null) return true;
+        if(e2eeRuntime!=null) return true;
         try {
-            transport=new RealE2eeTransport(this,localPeerId,1,this);
+            e2eeRuntime=new E2eeRuntime(this,localPeerId,new E2eeRuntime.Listener(){
+                @Override public void onReady(){runOnUiThread(()->{if(connectionStatus!=null)connectionStatus.setText("● GÜVENLİ BAĞLI");});}
+                @Override public void onMessage(String from,String message,String id){runOnUiThread(()->MainActivity.this.onIncomingMessage(from,message,id));}
+                @Override public void onError(String message){runOnUiThread(()->MainActivity.this.onTransportError(message));}
+            });
             return true;
         } catch(Throwable e) {
             if(connectionStatus!=null) connectionStatus.setText("● E2EE HAZIR DEĞİL");
             String detail=e.getMessage()==null?e.getClass().getSimpleName():e.getMessage();
             android.widget.Toast.makeText(this,"E2EE başlatılamadı: "+detail,android.widget.Toast.LENGTH_LONG).show();
-            transport=null;
+            e2eeRuntime=null;
             return false;
         }
     }
     private void connectRelay(){
-        if(ensureTransport() && !relayWss.isEmpty()) transport.connect(relayWss);
+        if(ensureTransport() && !relayWss.isEmpty()) e2eeRuntime.connect(relayWss);
+    }
+    private void onIncomingMessage(String from,String message,String id){
+        messages.add(message); notifyNewMessage(from); if(from.equals(activePeer))showChat(from);
+        handler.postDelayed(()->{messages.remove(message);if(from.equals(activePeer))showChat(from);},60000L);
+    }
+    private void onTransportError(String message){
+        if(connectionStatus!=null)connectionStatus.setText("● BAĞLANTI HATASI");
+        android.widget.Toast.makeText(this,message,android.widget.Toast.LENGTH_LONG).show();
     }
 
     private void base(String title){
@@ -198,7 +210,7 @@ public class MainActivity extends Activity implements RealE2eeTransport.Listener
         Button save=button("WSS Relay'e Bağlan");
         save.setOnClickListener(v->{String value=url.getText().toString().trim();if(!value.startsWith("wss://")){url.setError("wss:// adresi gerekli");return;}relayWss=value;
             getSharedPreferences(PREFS,MODE_PRIVATE).edit().putString("relayWss",value).apply();
-            if(transport!=null) transport.connect(value); showHome();});
+            if(e2eeRuntime!=null) e2eeRuntime.connect(value); showHome();});
         add(save,12);
         card(text("Bildirimler yalnızca “Yeni mesajınız var” bilgisini gösterir; mesaj metni bildirimde yer almaz.",13,MUTED,false));
     }
@@ -214,16 +226,6 @@ public class MainActivity extends Activity implements RealE2eeTransport.Listener
             .setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle("🔒 NEXUS").setContentText("Yeni mesajınız var")
             .setSubText("Gönderen: "+from).setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_HIGH);
         NotificationManagerCompat.from(this).notify(Math.abs(from.hashCode()),n.build());
-    }
-    @Override public void onReady(){runOnUiThread(()->{if(connectionStatus!=null)connectionStatus.setText("● GÜVENLİ BAĞLI");});}
-    @Override public void onMessage(String from,String message,String id){
-        messages.add(message); notifyNewMessage(from); if(from.equals(activePeer))showChat(from);
-        handler.postDelayed(()->{messages.remove(message);if(from.equals(activePeer))showChat(from);},60000L);
-    }
-    @Override public void onDelivery(String id,String status){}
-    @Override public void onError(String message){
-        runOnUiThread(()->{if(connectionStatus!=null)connectionStatus.setText("● BAĞLANTI HATASI");
-            android.widget.Toast.makeText(this,message,android.widget.Toast.LENGTH_LONG).show();});
     }
     private void showChat(String peer){
         activePeer=peer; base(peer);
@@ -244,6 +246,6 @@ public class MainActivity extends Activity implements RealE2eeTransport.Listener
         send.setOnClickListener(v->{String msg=input.getText().toString().trim();if(msg.isEmpty())return;
             if(!ensureTransport()) return;
             connectRelay();
-            transport.sendText(peer,1,msg); messages.add(msg);input.setText("");showChat(peer);});
+            e2eeRuntime.sendText(peer,1,msg); messages.add(msg);input.setText("");showChat(peer);});
     }
 }
