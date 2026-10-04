@@ -156,9 +156,7 @@ public final class MainActivity extends Activity {
     private void showChats(){
         LinearLayout p=screen();header(p,english?"Chats":"Sohbetler",english?"Encrypted conversations":"Şifreli konuşmalar",v->showHome());
         space(p,12);
-        if(contactIds.isEmpty()){TextView empty=text(english?"No conversations yet
-Add a NEXUS ID to start.":"Henüz sohbet yok
-Başlamak için NEXUS ID ekleyin.",15,MUTED);empty.setGravity(Gravity.CENTER);p.addView(empty,new LinearLayout.LayoutParams(-1,0,1));}
+        if(contactIds.isEmpty()){TextView empty=text(english?"No conversations yet\\nAdd a NEXUS ID to start.":"Henüz sohbet yok\\nBaşlamak için NEXUS ID ekleyin.",15,MUTED);empty.setGravity(Gravity.CENTER);p.addView(empty,new LinearLayout.LayoutParams(-1,0,1));}
         else{
             LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);
             for(String id:contactIds){LinearLayout c=card();TextView a=text("●  "+id,16,TEXT);a.setTypeface(Typeface.DEFAULT,Typeface.BOLD);c.addView(a);c.addView(text(english?"Tap to open encrypted chat":"Şifreli sohbeti açmak için dokunun",12,MUTED));c.setOnClickListener(v->showChat(id));list.addView(c,new LinearLayout.LayoutParams(-1,dp(78)));space(list,dp(8));}
