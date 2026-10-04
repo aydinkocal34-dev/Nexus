@@ -126,7 +126,7 @@ public final class MainActivity extends Activity {
         root.addView(page, new LinearLayout.LayoutParams(-1, -1));
     }
 
-    private TextView tile(String icon, String name, String sub, View.OnClickListener click) {
+    private LinearLayout tile(String icon, String name, String sub, View.OnClickListener click) {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER);
