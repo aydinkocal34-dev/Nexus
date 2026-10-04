@@ -258,7 +258,7 @@ public final class MainActivity extends Activity {
         TextView avatar = text("A", 54, TEXT);
         avatar.setGravity(Gravity.CENTER);
         avatar.setBackground(bg(BLUE, 70));
-        p.addView(avatar, new LinearLayout.LayoutParams(110, 110, Gravity.CENTER));
+        LinearLayout.LayoutParams avatarParams = new LinearLayout.LayoutParams(110, 110);\n        avatarParams.gravity = Gravity.CENTER_HORIZONTAL;\n        p.addView(avatar, avatarParams);
         TextView name = text(id == null || id.isEmpty() ? "aydin@nexus" : id, 20, TEXT);
         name.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         name.setGravity(Gravity.CENTER);
