@@ -13,7 +13,11 @@ function id(){return crypto.randomUUID();}
 function register(ws,peerId){
   if(typeof peerId!=="string"||peerId.length<8||peerId.length>128) return false;
   const old=peers.get(peerId); if(old&&old!==ws) old.close(4001,"replaced");
-  peers.set(peerId,ws); ws.peerId=peerId; send(ws,{type:"registered",peerId});\n  const queued=pendingPreKeys.get(peerId)||[]; pendingPreKeys.delete(peerId);\n  for(const m of queued){ if(Date.now() < m.expiresAt) send(ws,m); }\n  return true;\n}
+  peers.set(peerId,ws); ws.peerId=peerId; send(ws,{type:"registered",peerId});
+  const queued=pendingPreKeys.get(peerId)||[]; pendingPreKeys.delete(peerId);
+  for(const m of queued){ if(Date.now() < m.expiresAt) send(ws,m); }
+  return true;
+}
 wss.on("connection",ws=>{
   console.log("NEXUS relay websocket connected");
   ws.on("message",raw=>{
@@ -23,7 +27,17 @@ wss.on("connection",ws=>{
     const target=typeof m.to==="string"?peers.get(m.to):null;
     const expiresAt=Date.now()+Math.min(Math.max(Number(m.ttlMs)||60000,1000),ttlMax);
     if(m.type==="prekey-request"||m.type==="prekey"){
-      if(!target){send(ws,{type:"delivery",id:m.id,status:"offline"});return;}
+      if(!target){
+        if(m.type==="prekey-request"){
+          const q=pendingPreKeys.get(m.to)||[];
+          q.push({...m,from:ws.peerId,expiresAt});
+          pendingPreKeys.set(m.to,q);
+          send(ws,{type:"delivery",id:m.id,status:"queued"});
+          return;
+        }
+        send(ws,{type:"delivery",id:m.id,status:"offline"});return;
+      }
+      console.log(`NEXUS relay ${m.type} ${ws.peerId} -> ${m.to}`);
       send(target,{...m,from:ws.peerId,expiresAt});send(ws,{type:"delivery",id:m.id,status:"relayed"});return;
     }
     if(m.type==="relay"){
