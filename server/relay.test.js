@@ -29,7 +29,7 @@ function client(url,peerId){
 
 test("relay queues encrypted ciphertext while recipient is offline and delivers after reconnect",async()=>{
   const port=18080+Math.floor(Math.random()*1000);
-  const server=spawn(process.execPath,["server.js"],{cwd:new URL(".",import.meta.url),env:{...process.env,PORT:String(port)},stdio:["ignore","pipe","pipe"]});
+  const server=spawn(process.execPath,["server.js"],{cwd:process.cwd(),env:{...process.env,PORT:String(port)},stdio:["ignore","pipe","pipe"]});
   const url="ws://127.0.0.1:"+port;
   try{
     await new Promise((resolve,reject)=>{
