@@ -451,12 +451,30 @@ public final class MainActivity extends FragmentActivity {
         }catch(Exception ex){toast("E2EE: "+ex.getMessage());}
     }
 
+    private static final String EXTRA_NOTIFICATION_PEER="nexus_notification_peer";
+
+    private void openNotificationChat(Intent intent){
+        if(intent==null)return;
+        String peer=intent.getStringExtra(EXTRA_NOTIFICATION_PEER);
+        if(peer==null||peer.trim().isEmpty())return;
+        peer=peer.trim().toLowerCase(java.util.Locale.ROOT);
+        if(!peer.endsWith("@nexus"))return;
+        final String target=peer;
+        runOnUiThread(()->{
+            addContact(target);
+            showChat(target);
+        });
+    }
+
     private void notifyIncoming(String from){
         if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return;
         NotificationManager nm=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);String ch="messages";
         if(Build.VERSION.SDK_INT>=26){NotificationChannel c=new NotificationChannel(ch,"NEXUS Messages",NotificationManager.IMPORTANCE_DEFAULT);c.setDescription("NEXUS güvenli mesaj bildirimleri");nm.createNotificationChannel(c);}
-        Intent intent=new Intent(this,MainActivity.class);intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent pi=PendingIntent.getActivity(this,0,intent,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
+        Intent intent=new Intent(this,MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        intent.putExtra(EXTRA_NOTIFICATION_PEER,from);
+        int requestCode=(from==null?0:from.hashCode())&0x7fffffff;
+        PendingIntent pi=PendingIntent.getActivity(this,requestCode,intent,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
         NotificationCompat.Builder n=new NotificationCompat.Builder(this,ch)
                 .setSmallIcon(android.R.drawable.ic_dialog_email)
                 .setContentTitle("NEXUS")
@@ -467,7 +485,7 @@ public final class MainActivity extends FragmentActivity {
                 .setAutoCancel(true)
                 .setContentIntent(pi)
                 .setOnlyAlertOnce(true);
-        int id=(from==null?0:from.hashCode())&0x7fffffff;
+        int id=requestCode;
         nm.notify(id,n.build());
     }
 
@@ -491,5 +509,12 @@ public final class MainActivity extends FragmentActivity {
         });
         ScrollView sv=new ScrollView(this);sv.setBackgroundColor(BG);root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);sv.addView(root);setContentView(sv);showHome();
         String relay=prefs.getString("relay","");if(!"wss://nexus-relay-0dd3.onrender.com".equals(relay)){relay="wss://nexus-relay-0dd3.onrender.com";prefs.edit().putString("relay",relay).apply();}connectRelay(relay);
+        openNotificationChat(getIntent());
+    }
+
+    @Override protected void onNewIntent(Intent intent){
+        super.onNewIntent(intent);
+        setIntent(intent);
+        openNotificationChat(intent);
     }
 }
