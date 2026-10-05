@@ -263,6 +263,6 @@ public final class MainActivity extends Activity {
         contactIds.addAll(prefs.getStringSet("contacts",new HashSet<>()));
         if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},100);
         ScrollView sv=new ScrollView(this);sv.setBackgroundColor(BG);root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);sv.addView(root);setContentView(sv);showHome();
-        String relay=prefs.getString("relay","wss://nexus-relay-0dd3.onrender.com");prefs.edit().putString("relay",relay).apply();connectRelay(relay);
+        String relay=prefs.getString("relay","");if(!"wss://nexus-relay-0dd3.onrender.com".equals(relay)){relay="wss://nexus-relay-0dd3.onrender.com";prefs.edit().putString("relay",relay).apply();}connectRelay(relay);
     }
 }
