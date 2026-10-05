@@ -227,7 +227,7 @@ public final class MainActivity extends Activity {
     private void showSettings(){
         LinearLayout p=screen();header(p,english?"Settings":"Ayarlar",english?"NEXUS configuration":"NEXUS yapılandırması",v->showHome());space(p,12);
         LinearLayout id=card();id.addView(text("NEXUS ID",15,TEXT));id.addView(text(localId,14,BLUE));p.addView(id);space(p,10);
-        EditText relay=field(prefs.getString("relay","wss://relay.nexus.example/ws"));relay.setHint("wss://...");p.addView(relay,new LinearLayout.LayoutParams(-1,58));space(p,8);
+        EditText relay=field(prefs.getString("relay","wss://nexus-relay-0dd3.onrender.com"));relay.setHint("wss://...");p.addView(relay,new LinearLayout.LayoutParams(-1,58));space(p,8);
         Button connect=button(english?"Save & connect relay":"Kaydet ve relay'e bağlan");connect.setOnClickListener(v->{String url=relay.getText().toString().trim();prefs.edit().putString("relay",url).apply();connectRelay(url);});p.addView(connect,new LinearLayout.LayoutParams(-1,58));space(p,10);
         Button lang=button(english?"Türkçe":"English");lang.setOnClickListener(v->{english=!english;prefs.edit().putBoolean("english",english).apply();showSettings();});p.addView(lang,new LinearLayout.LayoutParams(-1,58));
         p.addView(new View(this),new LinearLayout.LayoutParams(-1,0,1));p.addView(text(english?"Notifications, device identity, contacts and encrypted message state are persisted locally.":"Bildirimler, cihaz kimliği, kişiler ve şifreli mesaj durumu cihazda saklanır.",12,MUTED));show(p);
@@ -263,6 +263,6 @@ public final class MainActivity extends Activity {
         contactIds.addAll(prefs.getStringSet("contacts",new HashSet<>()));
         if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},100);
         ScrollView sv=new ScrollView(this);sv.setBackgroundColor(BG);root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);sv.addView(root);setContentView(sv);showHome();
-        String relay=prefs.getString("relay","");if(!relay.isEmpty()&&!relay.contains("example"))connectRelay(relay);
+        String relay=prefs.getString("relay","wss://nexus-relay-0dd3.onrender.com");prefs.edit().putString("relay",relay).apply();connectRelay(relay);
     }
 }
