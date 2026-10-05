@@ -46,7 +46,7 @@ public final class MainActivity extends Activity {
     private TextView text(String s,float size,int color){TextView v=new TextView(this);v.setText(s);v.setTextSize(size);v.setTextColor(color);v.setIncludeFontPadding(true);return v;}
     private TextView title(String s){TextView v=text(s,22,TEXT);v.setTypeface(Typeface.DEFAULT,Typeface.BOLD);v.setGravity(Gravity.CENTER_VERTICAL);return v;}
     private LinearLayout screen(){LinearLayout s=new LinearLayout(this);s.setOrientation(LinearLayout.VERTICAL);s.setPadding(dp(16),dp(20),dp(16),dp(24));s.setBackgroundColor(BG);return s;}
-    private LinearLayout card(){LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(18),dp(14),dp(18),dp(14));c.setBackground(bg(PANEL,dp(18)));return c;}
+    private LinearLayout card(){LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(18),dp(14),dp(18),dp(14));GradientDrawable d=bg(PANEL,dp(18));d.setStroke(dp(1),Color.rgb(18,76,126));c.setBackground(d);return c;}
     private Button button(String s){Button b=new Button(this);b.setText(s);b.setTextColor(TEXT);b.setTextSize(15);b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);b.setAllCaps(false);b.setBackground(bg(BLUE,18));return b;}
     private EditText field(String hint){EditText e=new EditText(this);e.setHint(hint);e.setHintTextColor(MUTED);e.setTextColor(TEXT);e.setTextSize(15);e.setSingleLine(true);e.setPadding(17,6,17,6);e.setBackground(bg(CARD,16));return e;}
     private TextView icon(String s,View.OnClickListener l){TextView v=text(s,25,TEXT);v.setGravity(Gravity.CENTER);v.setBackground(bg(CARD,26));v.setOnClickListener(l);return v;}
@@ -57,7 +57,7 @@ public final class MainActivity extends Activity {
         if(back!=null)h.addView(icon("‹",back),new LinearLayout.LayoutParams(dp(46),dp(46)));
         h.addView(title(t),new LinearLayout.LayoutParams(0,dp(56),1));
         TextView home=icon("⌂",v->showHome());home.setTextColor(BLUE);h.addView(home,new LinearLayout.LayoutParams(dp(46),dp(46)));
-        p.addView(h,new LinearLayout.LayoutParams(-1,dp(58)));
+        p.addView(h,new LinearLayout.LayoutParams(-1,dp(58))); View line=new View(this);line.setBackgroundColor(Color.rgb(18,104,180));p.addView(line,new LinearLayout.LayoutParams(-1,dp(1)));
         if(sub!=null&&!sub.isEmpty())p.addView(text(sub,13,MUTED),new LinearLayout.LayoutParams(-1,-2));
     }
     private LinearLayout tile(int res,String name,String sub,View.OnClickListener l){
@@ -157,7 +157,7 @@ public final class MainActivity extends Activity {
     private void showChats(){
         LinearLayout p=screen();header(p,english?"Chats":"Sohbetler",english?"Encrypted conversations":"Şifreli konuşmalar",v->showHome());
         space(p,12);
-        if(contactIds.isEmpty()){TextView empty=text(english?"No conversations yet\nAdd a NEXUS ID to start.":"Henüz sohbet yok\nBaşlamak için NEXUS ID ekleyin.",15,MUTED);empty.setGravity(Gravity.CENTER);p.addView(empty,new LinearLayout.LayoutParams(-1,0,1));}
+        if(contactIds.isEmpty()){LinearLayout empty=card();empty.setGravity(Gravity.CENTER);TextView e=text(english?"◌\nNo conversations yet\nAdd a NEXUS ID to start.":"◌\nHenüz sohbet yok\nBaşlamak için NEXUS ID ekleyin.",15,MUTED);e.setGravity(Gravity.CENTER);empty.addView(e,new LinearLayout.LayoutParams(-1,dp(130)));p.addView(empty,new LinearLayout.LayoutParams(-1,0,1));}
         else{
             LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);
             for(String id:contactIds){LinearLayout c=card();TextView a=text("●  "+id,16,TEXT);a.setTypeface(Typeface.DEFAULT,Typeface.BOLD);c.addView(a);c.addView(text(english?"Tap to open encrypted chat":"Şifreli sohbeti açmak için dokunun",12,MUTED));c.setOnClickListener(v->showChat(id));list.addView(c,new LinearLayout.LayoutParams(-1,dp(78)));space(list,dp(8));}
@@ -170,6 +170,7 @@ public final class MainActivity extends Activity {
         LinearLayout p=screen();header(p,english?"People":"Kişiler",english?"NEXUS ID contacts":"NEXUS ID rehberi",v->showHome());
         space(p,12);
         LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);
+        if(contactIds.isEmpty()){LinearLayout empty=card();empty.setGravity(Gravity.CENTER);TextView e=text(english?"♙\nNo contacts yet\nAdd a NEXUS ID below.":"♙\nHenüz kişi yok\nAşağıdan bir NEXUS ID ekleyin.",15,MUTED);e.setGravity(Gravity.CENTER);empty.addView(e,new LinearLayout.LayoutParams(-1,dp(130)));list.addView(empty,new LinearLayout.LayoutParams(-1,dp(150)));space(list,8);}
         for(String id:contactIds){
             LinearLayout c=card();c.setOnClickListener(v->showChat(id));
             c.addView(text("♙  "+id,16,TEXT));c.addView(text(english?"Encrypted contact":"Uçtan uca şifreli kişi",12,MUTED));
@@ -205,13 +206,11 @@ public final class MainActivity extends Activity {
     }
 
     private void appendMessage(String s,boolean mine){
-        TextView m=text(s+"\n"+(mine?"OK":"NEW"),14,TEXT);
-        m.setPadding(dp(14),dp(12),dp(14),dp(12));
-        m.setBackground(bg(mine?BLUE:CARD,dp(16)));
-        LinearLayout.LayoutParams q=new LinearLayout.LayoutParams(-2,-2);
-        q.gravity=mine?Gravity.RIGHT:Gravity.LEFT;
-        q.topMargin=dp(10);
-        messages.addView(m,q);
+        TextView m=text(s,15,TEXT); m.setGravity(Gravity.CENTER_VERTICAL); m.setPadding(dp(16),dp(11),dp(16),dp(11));
+        GradientDrawable bubble=bg(mine?BLUE:Color.rgb(18,38,61),dp(20));
+        bubble.setStroke(dp(1),mine?Color.rgb(54,164,255):Color.rgb(31,76,117)); m.setBackground(bubble);
+        m.setElevation(dp(2));
+        LinearLayout.LayoutParams q=new LinearLayout.LayoutParams(-2,-2); q.gravity=mine?Gravity.RIGHT:Gravity.LEFT; q.topMargin=dp(8); q.leftMargin=mine?dp(48):dp(4); q.rightMargin=mine?dp(4):dp(48); messages.addView(m,q);
     }
 
     private void saveMessage(String peer,String msg,boolean mine){String k="msg_"+peer;Set<String> old=prefs.getStringSet(k,new HashSet<>());HashSet<String> n=new HashSet<>(old);n.add((mine?"1|":"0|")+msg);prefs.edit().putStringSet(k,n).apply();}
@@ -242,7 +241,7 @@ public final class MainActivity extends Activity {
         try{
             if(e2ee!=null){try{e2ee=null;}catch(Exception ignored){}}
             e2ee=new E2eeRuntime(this,localId,(new E2eeRuntime.Listener(){
-                public void onReady(){runOnUiThread(()->{if(connectionStatus!=null){connectionStatus.setText(english?"Secure relay connected • E2EE ready":"Güvenli relay bağlı • E2EE hazır");connectionStatus.setTextColor(GREEN);}toast(english?"NEXUS secure relay connected":"NEXUS güvenli relay bağlandı");});}
+                public void onReady(){runOnUiThread(()->{if(connectionStatus!=null){connectionStatus.setText("●  "+(english?"Secure relay connected • E2EE ready":"Güvenli relay bağlı • E2EE hazır");connectionStatus.setTextColor(GREEN);}toast(english?"NEXUS secure relay connected":"NEXUS güvenli relay bağlandı");});}
                 public void onMessage(String from,String message,String id){runOnUiThread(()->{addContact(from);if(activePeer!=null&&activePeer.equals(from)&&messages!=null)appendMessage(message,false);saveMessage(from,message,false);notifyIncoming(from);});}
                 public void onError(String m){final String msg=(m==null?"Relay connection failed":m); final String low=msg.toLowerCase(java.util.Locale.ROOT); if(low.contains("software caused connection abort")||low.contains("connection abort")||low.contains("connection reset")||low.contains("broken pipe")||low.contains("canceled"))return; runOnUiThread(()->{if(connectionStatus!=null){connectionStatus.setText((english?"Relay error: ":"Relay hatası: ")+msg);connectionStatus.setTextColor(RED);}toast("Relay: "+msg);});}
             }));
