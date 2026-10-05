@@ -26,6 +26,7 @@ public final class RealE2eeTransport implements RelayClient.Listener {
     private final int localDeviceId;
     private final Listener listener;
     private final List<Pending> pending=new ArrayList<>();
+    private final EncryptedOutbox outbox;
     private final List<PendingPreKey> pendingPreKeys=new ArrayList<>();
     private final java.util.HashSet<String> pendingSessionRequests=new java.util.HashSet<>();
     private final java.util.HashSet<String> receivedIds=new java.util.HashSet<>();
@@ -40,6 +41,8 @@ public final class RealE2eeTransport implements RelayClient.Listener {
         if(localPeerId==null||localPeerId.length()<8)throw new IllegalArgumentException("Invalid local peer ID");
         this.localPeerId=localPeerId;this.localDeviceId=localDeviceId;this.listener=listener;
         this.e2ee=new DeviceE2eeController(context,localPeerId,localDeviceId);
+        this.outbox=new EncryptedOutbox(context);
+        this.pending.addAll(outbox.load());
         this.relay=new RelayClient(this);
     }
     public void connect(String wssUrl){relay.connect(wssUrl,localPeerId);}
@@ -51,6 +54,11 @@ public final class RealE2eeTransport implements RelayClient.Listener {
         if(pendingSessionRequests.contains(remotePeerId))return;
         String id=UUID.randomUUID().toString();
         pendingSessionRequests.add(remotePeerId);
+        main.postDelayed(()->{
+            synchronized(RealE2eeTransport.this){
+                if(pendingSessionRequests.remove(remotePeerId) && relayReady) requestSession(remotePeerId,0);
+            }
+        },60000L);
         if(relay.requestPreKey(id,remotePeerId,60000L)) return;
         pendingSessionRequests.remove(remotePeerId);
         if(attempt<5) main.postDelayed(()->requestSession(remotePeerId,attempt+1),750L);
@@ -61,10 +69,12 @@ public final class RealE2eeTransport implements RelayClient.Listener {
             DeviceE2eeController.CipherPacket p=e2ee.encrypt(remotePeerId,remoteDeviceId,text.getBytes(StandardCharsets.UTF_8));
             if(!relayReady||!relay.sendCiphertext(id,remotePeerId,p.bytes,p.type,localDeviceId,86400000L)){
                 pending.add(new Pending(id,remotePeerId,remoteDeviceId,text));
+                outbox.save(pending);
                 if(relayReady) requestSession(remotePeerId);
             }
         }catch(Exception ex){
             pending.add(new Pending(id,remotePeerId,remoteDeviceId,text));
+            outbox.save(pending);
             requestSession(remotePeerId);
         }
         return id;
@@ -74,7 +84,7 @@ public final class RealE2eeTransport implements RelayClient.Listener {
             Pending p=pending.get(i);if(!p.peerId.equals(peerId)||p.deviceId!=deviceId)continue;
             try{
                 DeviceE2eeController.CipherPacket cp=e2ee.encrypt(p.peerId,p.deviceId,p.text.getBytes(StandardCharsets.UTF_8));
-                if(relay.sendCiphertext(p.id,p.peerId,cp.bytes,cp.type,localDeviceId,86400000L))pending.remove(i);
+                if(relay.sendCiphertext(p.id,p.peerId,cp.bytes,cp.type,localDeviceId,86400000L)){pending.remove(i);outbox.save(pending);}
             }catch(Exception ignored){}
         }
     }
