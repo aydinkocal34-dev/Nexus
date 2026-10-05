@@ -25,7 +25,7 @@ function send(ws,obj) {
   return false;
 }
 
-function queueKey(from,to,id) { return `${from}|\${to}|${id}`; }
+function queueKey(from,to,id) { return `${from}|${to}|${id}`; }
 
 function pruneDelivered() {
   const now = Date.now();
