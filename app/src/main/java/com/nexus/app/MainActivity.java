@@ -326,6 +326,7 @@ public final class MainActivity extends FragmentActivity {
         connectionStatus=text(relayConnected?(english?"● Secure relay connected • E2EE ready":"● Güvenli relay bağlı • E2EE hazır"):(english?"Connecting to secure relay...":"Güvenli relay bağlantısı kuruluyor..."),11,relayConnected?GREEN:MUTED);connectionStatus.setGravity(Gravity.CENTER);p.addView(connectionStatus);
         messages=new LinearLayout(this);messages.setOrientation(LinearLayout.VERTICAL);p.addView(messages,new LinearLayout.LayoutParams(-1,0,1));
         loadLocalMessages(id);
+        markPeerRead(id);
         LinearLayout bar=new LinearLayout(this);bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(6,6,6,6);bar.setBackground(bg(PANEL,22));
         EditText input=field(english?"Message...":"Mesaj yaz...");bar.addView(input,new LinearLayout.LayoutParams(0,dp(54),1));
         TextView send=text("➤",22,TEXT);send.setGravity(Gravity.CENTER);send.setBackground(bg(BLUE,30));bar.addView(send,new LinearLayout.LayoutParams(dp(54),dp(54)));
@@ -387,16 +388,40 @@ public final class MainActivity extends FragmentActivity {
         return new String(c.doFinal(data),StandardCharsets.UTF_8);
     }
     private void saveMessage(String peer,String msg,boolean mine){
+        saveMessage(peer,msg,mine,null);
+    }
+
+    private void saveMessage(String peer,String msg,boolean mine,String messageId){
         try{
             String key="msg_secure_"+peer;
             String encrypted=prefs.getString(key,"");
             String plain=encrypted.isEmpty()?"":decryptLocalMessages(encrypted);
-            String record=(mine?"1":"0")+":"+Base64.encodeToString(msg.getBytes(StandardCharsets.UTF_8),Base64.NO_WRAP);
+            String encoded=Base64.encodeToString(msg.getBytes(StandardCharsets.UTF_8),Base64.NO_WRAP);
+            String record;
+            if(!mine && messageId!=null && !messageId.isEmpty()) record="0:"+messageId+":"+encoded;
+            else record=(mine?"1":"0")+":"+encoded;
             plain=plain.isEmpty()?record:plain+"\\n"+record;
             prefs.edit().putString(key,encryptLocalMessages(plain)).remove("msg_"+peer).apply();
         }catch(Exception e){
             toast("Yerel güvenli kayıt hatası: "+e.getClass().getSimpleName());
         }
+    }
+
+    private void addUnread(String peer,String messageId){
+        if(messageId==null||messageId.isEmpty())return;
+        String key="unread_"+peer;
+        Set<String> ids=new HashSet<>(prefs.getStringSet(key,new HashSet<>()));
+        ids.add(messageId);
+        prefs.edit().putStringSet(key,ids).apply();
+    }
+
+    private void markPeerRead(String peer){
+        if(peer==null||e2ee==null||!relayConnected)return;
+        String key="unread_"+peer;
+        Set<String> ids=new HashSet<>(prefs.getStringSet(key,new HashSet<>()));
+        if(ids.isEmpty())return;
+        for(String id:ids)e2ee.markRead(id,peer);
+        prefs.edit().remove(key).apply();
     }
     private void loadLocalMessages(String peer){
         try{
@@ -442,7 +467,7 @@ public final class MainActivity extends FragmentActivity {
             if(e2ee!=null){try{e2ee=null;}catch(Exception ignored){}}
             e2ee=new E2eeRuntime(this,localId,(new E2eeRuntime.Listener(){
                 public void onReady(){relayConnected=true;runOnUiThread(()->{if(connectionStatus!=null){connectionStatus.setText("●  "+(english?"Secure relay connected • E2EE ready":"Güvenli relay bağlı • E2EE hazır"));connectionStatus.setTextColor(GREEN);}toast(english?"NEXUS secure relay connected":"NEXUS güvenli relay bağlandı");});}
-                public void onMessage(String from,String message,String id){runOnUiThread(()->{addContact(from);boolean open=activePeer!=null&&activePeer.equals(from)&&messages!=null;if(open){appendMessage(message,false);if(e2ee!=null)e2ee.markRead(id,from);}saveMessage(from,message,false);notifyIncoming(from);});}
+                public void onMessage(String from,String message,String id){runOnUiThread(()->{addContact(from);boolean open=activePeer!=null&&activePeer.equals(from)&&messages!=null;if(open){appendMessage(message,false);saveMessage(from,message,false,id);if(e2ee!=null)e2ee.markRead(id,from);}else{saveMessage(from,message,false,id);addUnread(from,id);}notifyIncoming(from);});}
                 public void onDelivery(String id,String status){runOnUiThread(()->updateDelivery(id,status));}
                 public void onClosed(){relayConnected=false;runOnUiThread(()->{if(connectionStatus!=null){connectionStatus.setText(english?"Reconnecting securely...":"Güvenli bağlantı yeniden kuruluyor...");connectionStatus.setTextColor(MUTED);}});}
                 public void onError(String m){final String msg=(m==null?"Relay connection failed":m); final String low=msg.toLowerCase(java.util.Locale.ROOT); if(low.contains("software caused connection abort")||low.contains("connection abort")||low.contains("connection reset")||low.contains("broken pipe")||low.contains("canceled"))return; runOnUiThread(()->{if(connectionStatus!=null){connectionStatus.setText((english?"Relay error: ":"Relay hatası: ")+msg);connectionStatus.setTextColor(RED);}toast("Relay: "+msg);});}
