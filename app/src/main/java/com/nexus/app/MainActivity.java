@@ -77,7 +77,7 @@ public final class MainActivity extends Activity {
         return box;
     }
 
-    private TextView nav(String i,String s,int c){TextView v=text(i+"\\n"+s,10,c);v.setGravity(Gravity.CENTER);return v;}
+    private TextView nav(String i,String s,int c){TextView v=text(i+"\n"+s,10,c);v.setGravity(Gravity.CENTER);return v;}
 
     private void showHome(){
         // Reference layout: normal Android dp sizing, generous spacing, no overlap.
@@ -155,7 +155,7 @@ public final class MainActivity extends Activity {
     private void showChats(){
         LinearLayout p=screen();header(p,english?"Chats":"Sohbetler",english?"Encrypted conversations":"Şifreli konuşmalar",v->showHome());
         space(p,12);
-        if(contactIds.isEmpty()){TextView empty=text(english?"No conversations yet\\nAdd a NEXUS ID to start.":"Henüz sohbet yok\\nBaşlamak için NEXUS ID ekleyin.",15,MUTED);empty.setGravity(Gravity.CENTER);p.addView(empty,new LinearLayout.LayoutParams(-1,0,1));}
+        if(contactIds.isEmpty()){TextView empty=text(english?"No conversations yet\nAdd a NEXUS ID to start.":"Henüz sohbet yok\nBaşlamak için NEXUS ID ekleyin.",15,MUTED);empty.setGravity(Gravity.CENTER);p.addView(empty,new LinearLayout.LayoutParams(-1,0,1));}
         else{
             LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);
             for(String id:contactIds){LinearLayout c=card();TextView a=text("●  "+id,16,TEXT);a.setTypeface(Typeface.DEFAULT,Typeface.BOLD);c.addView(a);c.addView(text(english?"Tap to open encrypted chat":"Şifreli sohbeti açmak için dokunun",12,MUTED));c.setOnClickListener(v->showChat(id));list.addView(c,new LinearLayout.LayoutParams(-1,dp(78)));space(list,dp(8));}
@@ -203,7 +203,7 @@ public final class MainActivity extends Activity {
     }
 
     private void appendMessage(String s,boolean mine){
-        TextView m=text(s+"\\n"+(mine?"OK":"NEW"),14,TEXT);
+        TextView m=text(s+"\n"+(mine?"OK":"NEW"),14,TEXT);
         m.setPadding(dp(14),dp(12),dp(14),dp(12));
         m.setBackground(bg(mine?BLUE:CARD,dp(16)));
         LinearLayout.LayoutParams q=new LinearLayout.LayoutParams(-2,-2);
@@ -233,7 +233,7 @@ public final class MainActivity extends Activity {
         p.addView(new View(this),new LinearLayout.LayoutParams(-1,0,1));p.addView(text(english?"Notifications, device identity, contacts and encrypted message state are persisted locally.":"Bildirimler, cihaz kimliği, kişiler ve şifreli mesaj durumu cihazda saklanır.",12,MUTED));show(p);
     }
 
-    private void showNotifications(){LinearLayout p=screen();header(p,english?"Notifications":"Bildirimler",english?"Message alerts":"Mesaj bildirimleri",v->showHome());space(p,20);TextView t=text(english?"Notifications are enabled by Android permission.\\nNew encrypted messages are surfaced here.":"Bildirimler Android izni ile çalışır.\\nYeni şifreli mesajlar burada gösterilir.",15,MUTED);t.setGravity(Gravity.CENTER);p.addView(t,new LinearLayout.LayoutParams(-1,0,1));show(p);}
+    private void showNotifications(){LinearLayout p=screen();header(p,english?"Notifications":"Bildirimler",english?"Message alerts":"Mesaj bildirimleri",v->showHome());space(p,20);TextView t=text(english?"Notifications are enabled by Android permission.\nNew encrypted messages are surfaced here.":"Bildirimler Android izni ile çalışır.\nYeni şifreli mesajlar burada gösterilir.",15,MUTED);t.setGravity(Gravity.CENTER);p.addView(t,new LinearLayout.LayoutParams(-1,0,1));show(p);}
 
     private void connectRelay(String url){
         if(!url.startsWith("wss://")){toast(english?"Relay must use WSS/TLS":"Relay WSS/TLS kullanmalı");return;}
