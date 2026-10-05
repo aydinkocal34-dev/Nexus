@@ -77,8 +77,7 @@ public final class MainActivity extends Activity {
         return box;
     }
 
-    private TextView nav(String i,String s,int c){TextView v=text(i+"
-"+s,10,c);v.setGravity(Gravity.CENTER);return v;}
+    private TextView nav(String i,String s,int c){TextView v=text(i+"\\n"+s,10,c);v.setGravity(Gravity.CENTER);return v;}
 
     private void showHome(){
         // Reference layout: normal Android dp sizing, generous spacing, no overlap.
