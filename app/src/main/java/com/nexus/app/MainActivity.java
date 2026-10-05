@@ -4,6 +4,8 @@ import android.Manifest;
 import androidx.fragment.app.FragmentActivity;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Intent;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -27,6 +29,7 @@ import android.widget.Toast;
 import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
+import androidx.core.app.NotificationCompat;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
@@ -376,7 +379,21 @@ public final class MainActivity extends FragmentActivity {
     private void notifyIncoming(String from){
         if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return;
         NotificationManager nm=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);String ch="messages";
-        if(Build.VERSION.SDK_INT>=26){NotificationChannel c=new NotificationChannel(ch,"NEXUS Messages",NotificationManager.IMPORTANCE_DEFAULT);nm.createNotificationChannel(c);}
+        if(Build.VERSION.SDK_INT>=26){NotificationChannel c=new NotificationChannel(ch,"NEXUS Messages",NotificationManager.IMPORTANCE_DEFAULT);c.setDescription("NEXUS güvenli mesaj bildirimleri");nm.createNotificationChannel(c);}
+        Intent intent=new Intent(this,MainActivity.class);intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent pi=PendingIntent.getActivity(this,0,intent,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
+        NotificationCompat.Builder n=new NotificationCompat.Builder(this,ch)
+                .setSmallIcon(android.R.drawable.ic_dialog_email)
+                .setContentTitle("NEXUS")
+                .setContentText(english?"New secure message":"Yeni güvenli mesaj")
+                .setSubText("E2EE")
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                .setAutoCancel(true)
+                .setContentIntent(pi)
+                .setOnlyAlertOnce(true);
+        int id=(from==null?0:from.hashCode())&0x7fffffff;
+        nm.notify(id,n.build());
     }
 
     private void toast(String s){Toast.makeText(this,s,Toast.LENGTH_SHORT).show();}
