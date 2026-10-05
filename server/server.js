@@ -6,14 +6,14 @@ const httpServer=http.createServer((req,res)=>{res.writeHead(200,{"content-type"
 const wss=new WebSocketServer({server:httpServer});
 httpServer.listen(port,()=>console.log(`NEXUS relay listening on :${port}`));
 const peers=new Map();
+const pendingPreKeys=new Map();
 const ttlMax=120000;
 function send(ws,obj){if(ws.readyState===1)ws.send(JSON.stringify(obj));}
 function id(){return crypto.randomUUID();}
 function register(ws,peerId){
   if(typeof peerId!=="string"||peerId.length<8||peerId.length>128) return false;
   const old=peers.get(peerId); if(old&&old!==ws) old.close(4001,"replaced");
-  peers.set(peerId,ws); ws.peerId=peerId; send(ws,{type:"registered",peerId}); return true;
-}
+  peers.set(peerId,ws); ws.peerId=peerId; send(ws,{type:"registered",peerId});\n  const queued=pendingPreKeys.get(peerId)||[]; pendingPreKeys.delete(peerId);\n  for(const m of queued){ if(Date.now() < m.expiresAt) send(ws,m); }\n  return true;\n}
 wss.on("connection",ws=>{
   console.log("NEXUS relay websocket connected");
   ws.on("message",raw=>{
