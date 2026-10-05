@@ -243,7 +243,7 @@ public final class MainActivity extends Activity {
             e2ee=new E2eeRuntime(this,localId,(new E2eeRuntime.Listener(){
                 public void onReady(){runOnUiThread(()->{if(connectionStatus!=null){connectionStatus.setText(english?"Secure relay connected • E2EE ready":"Güvenli relay bağlı • E2EE hazır");connectionStatus.setTextColor(GREEN);}toast(english?"NEXUS secure relay connected":"NEXUS güvenli relay bağlandı");});}
                 public void onMessage(String from,String message,String id){runOnUiThread(()->{addContact(from);if(activePeer!=null&&activePeer.equals(from)&&messages!=null)appendMessage(message,false);saveMessage(from,message,false);notifyIncoming(from);});}
-                public void onError(String m){runOnUiThread(()->{if(connectionStatus!=null){connectionStatus.setText((english?"Relay error: ":"Relay hatası: ")+m);connectionStatus.setTextColor(RED);}toast("Relay: "+m);});}
+                public void onError(String m){runOnUiThread(()->{if(m==null)m="Relay connection failed"; String low=m.toLowerCase(java.util.Locale.ROOT); if(low.contains("software caused connection abort")||low.contains("connection abort")||low.contains("connection reset")||low.contains("broken pipe")||low.contains("canceled")){return;} if(connectionStatus!=null){connectionStatus.setText((english?"Relay error: ":"Relay hatası: ")+m);connectionStatus.setTextColor(RED);}toast("Relay: "+m);});}
             }));
             e2ee.connect(url);
         }catch(Exception ex){toast("E2EE: "+ex.getMessage());}
