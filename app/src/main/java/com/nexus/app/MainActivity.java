@@ -466,7 +466,7 @@ public final class MainActivity extends FragmentActivity {
         try{
             if(e2ee!=null){try{e2ee=null;}catch(Exception ignored){}}
             e2ee=new E2eeRuntime(this,localId,(new E2eeRuntime.Listener(){
-                public void onReady(){relayConnected=true;runOnUiThread(()->{if(connectionStatus!=null){connectionStatus.setText("●  "+(english?"Secure relay connected • E2EE ready":"Güvenli relay bağlı • E2EE hazır"));connectionStatus.setTextColor(GREEN);}toast(english?"NEXUS secure relay connected":"NEXUS güvenli relay bağlandı");});}
+                public void onReady(){relayConnected=true;runOnUiThread(()->{if(connectionStatus!=null){connectionStatus.setText("●  "+(english?"Secure relay connected • E2EE ready":"Güvenli relay bağlı • E2EE hazır"));connectionStatus.setTextColor(GREEN);}if(activePeer!=null)markPeerRead(activePeer);toast(english?"NEXUS secure relay connected":"NEXUS güvenli relay bağlandı");});}
                 public void onMessage(String from,String message,String id){runOnUiThread(()->{addContact(from);boolean open=activePeer!=null&&activePeer.equals(from)&&messages!=null;if(open){appendMessage(message,false);saveMessage(from,message,false,id);if(e2ee!=null)e2ee.markRead(id,from);}else{saveMessage(from,message,false,id);addUnread(from,id);}notifyIncoming(from);});}
                 public void onDelivery(String id,String status){runOnUiThread(()->updateDelivery(id,status));}
                 public void onClosed(){relayConnected=false;runOnUiThread(()->{if(connectionStatus!=null){connectionStatus.setText(english?"Reconnecting securely...":"Güvenli bağlantı yeniden kuruluyor...");connectionStatus.setTextColor(MUTED);}});}
