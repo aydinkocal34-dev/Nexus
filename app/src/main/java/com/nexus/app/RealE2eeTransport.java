@@ -24,7 +24,9 @@ public final class RealE2eeTransport implements RelayClient.Listener {
     private final int localDeviceId;
     private final Listener listener;
     private final List<Pending> pending=new ArrayList<>();
+    private final List<PendingPreKey> pendingPreKeys=new ArrayList<>();
     private volatile boolean relayReady=false;
+    private static final class PendingPreKey { final String id,toPeer,bundle; PendingPreKey(String id,String toPeer,String bundle){this.id=id;this.toPeer=toPeer;this.bundle=bundle;} }
 
     public RealE2eeTransport(Context context,String localPeerId,int localDeviceId,Listener listener)throws Exception{
         if(localPeerId==null||localPeerId.length()<8)throw new IllegalArgumentException("Invalid local peer ID");
@@ -62,10 +64,14 @@ public final class RealE2eeTransport implements RelayClient.Listener {
         java.util.HashSet<String> peers=new java.util.HashSet<>();
         synchronized(this){for(Pending p:pending) peers.add(p.peerId);}
         for(String peer:peers) requestSession(peer);
+        flushPendingPreKeys();
     }
-    @Override public void onPreKeyRequest(String id,String from,long expiresAt){
-        try{SignalPreKeyEnvelope b=e2ee.createLocalPreKeyBundle();relay.sendPreKey(id,from,b.encode(),60000L);}
+    @Override public synchronized void onPreKeyRequest(String id,String from,long expiresAt){
+        try{SignalPreKeyEnvelope b=e2ee.createLocalPreKeyBundle(); String encoded=b.encode(); if(!relay.sendPreKey(id,from,encoded,60000L)) pendingPreKeys.add(new PendingPreKey(id,from,encoded));}
         catch(Exception e){listener.onError("Pre-key generation failed: "+e.getMessage());}
+    }
+    private synchronized void flushPendingPreKeys(){
+        for(int i=pendingPreKeys.size()-1;i>=0;i--){PendingPreKey p=pendingPreKeys.get(i); if(relay.sendPreKey(p.id,p.toPeer,p.bundle,60000L)) pendingPreKeys.remove(i);}
     }
     @Override public void onPreKey(String id,String from,String bundle,long expiresAt){
         try{SignalPreKeyEnvelope e=SignalPreKeyEnvelope.decode(bundle);e2ee.establishSession(from,e.deviceId,e);flushPending(from,e.deviceId);listener.onReady();}
