@@ -27,6 +27,8 @@ import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 public final class MainActivity extends Activity {
@@ -40,6 +42,7 @@ public final class MainActivity extends Activity {
     private boolean english=false;
     private TextView connectionStatus;
     private final ArrayList<String> contactIds=new ArrayList<>();
+    private final Map<String,TextView> deliveryViews=new HashMap<>();
 
     private int dp(float v){ return Math.round(v * getResources().getDisplayMetrics().density); }
     private GradientDrawable bg(int c,float r){GradientDrawable d=new GradientDrawable();d.setColor(c);d.setCornerRadius(r);return d;}
@@ -201,7 +204,7 @@ public final class MainActivity extends Activity {
         LinearLayout bar=new LinearLayout(this);bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(6,6,6,6);bar.setBackground(bg(PANEL,22));
         EditText input=field(english?"Message...":"Mesaj yaz...");bar.addView(input,new LinearLayout.LayoutParams(0,dp(54),1));
         TextView send=text("➤",22,TEXT);send.setGravity(Gravity.CENTER);send.setBackground(bg(BLUE,30));bar.addView(send,new LinearLayout.LayoutParams(dp(54),dp(54)));
-        send.setOnClickListener(v->{String msg=input.getText().toString().trim();if(msg.isEmpty())return;appendMessage(msg,true);saveMessage(id,msg,true);input.setText("");if(e2ee!=null){try{e2ee.sendText(id,1,msg);}catch(Exception ex){toast("E2EE: "+ex.getMessage());}}});
+        send.setOnClickListener(v->{String msg=input.getText().toString().trim();if(msg.isEmpty())return;input.setText("");if(e2ee!=null){try{String messageId=e2ee.sendText(id,1,msg);appendOutgoingMessage(msg,messageId);saveMessage(id,msg,true);}catch(Exception ex){toast("E2EE: "+ex.getMessage());}}else{appendOutgoingMessage(msg,null);saveMessage(id,msg,true);}});
         p.addView(bar);show(p);
     }
 
@@ -211,6 +214,29 @@ public final class MainActivity extends Activity {
         bubble.setStroke(dp(1),mine?Color.rgb(54,164,255):Color.rgb(31,76,117)); m.setBackground(bubble);
         m.setElevation(dp(2));
         LinearLayout.LayoutParams q=new LinearLayout.LayoutParams(-2,-2); q.gravity=mine?Gravity.RIGHT:Gravity.LEFT; q.topMargin=dp(8); q.leftMargin=mine?dp(48):dp(4); q.rightMargin=mine?dp(4):dp(48); messages.addView(m,q);
+    }
+
+    private void appendOutgoingMessage(String s,String messageId){
+        LinearLayout wrap=new LinearLayout(this);wrap.setOrientation(LinearLayout.VERTICAL);wrap.setGravity(Gravity.RIGHT);
+        TextView body=text(s,15,TEXT);body.setGravity(Gravity.CENTER_VERTICAL);body.setPadding(dp(16),dp(11),dp(16),dp(3));
+        GradientDrawable bubble=bg(BLUE,dp(20));bubble.setStroke(dp(1),Color.rgb(54,164,255));body.setBackground(bubble);
+        TextView state=text("Gönderiliyor",11,Color.rgb(210,225,245));state.setGravity(Gravity.RIGHT);state.setPadding(dp(10),0,dp(12),dp(8));
+        wrap.addView(body,new LinearLayout.LayoutParams(-2,-2));wrap.addView(state,new LinearLayout.LayoutParams(-2,-2));
+        LinearLayout.LayoutParams q=new LinearLayout.LayoutParams(-2,-2);q.gravity=Gravity.RIGHT;q.topMargin=dp(8);q.leftMargin=dp(48);q.rightMargin=dp(4);messages.addView(wrap,q);
+        if(messageId!=null)deliveryViews.put(messageId,state);
+    }
+
+    private void updateDelivery(String id,String status){
+        TextView v=deliveryViews.get(id);if(v==null)return;
+        String label=status;
+        if("queued".equals(status)||"relayed".equals(status)) label="✓ Relay'e ulaştı";
+        else if("delivered".equals(status)) label="✓✓ Teslim edildi";
+        else if("read".equals(status)) label="✓✓ Okundu";
+        else if("offline".equals(status)) label="Bekliyor • karşı cihaz çevrimdışı";
+        else if("queue_full".equals(status)) label="Kuyruk dolu • tekrar denenecek";
+        v.setText(label);
+        v.setTextColor("read".equals(status)?BLUE:Color.rgb(210,225,245));
+        if("delivered".equals(status)||"read".equals(status)) v.setTextColor(BLUE);
     }
 
     private void saveMessage(String peer,String msg,boolean mine){String k="msg_"+peer;Set<String> old=prefs.getStringSet(k,new HashSet<>());HashSet<String> n=new HashSet<>(old);n.add((mine?"1|":"0|")+msg);prefs.edit().putStringSet(k,n).apply();}
@@ -243,6 +269,7 @@ public final class MainActivity extends Activity {
             e2ee=new E2eeRuntime(this,localId,(new E2eeRuntime.Listener(){
                 public void onReady(){runOnUiThread(()->{if(connectionStatus!=null){connectionStatus.setText("●  "+(english?"Secure relay connected • E2EE ready":"Güvenli relay bağlı • E2EE hazır"));connectionStatus.setTextColor(GREEN);}toast(english?"NEXUS secure relay connected":"NEXUS güvenli relay bağlandı");});}
                 public void onMessage(String from,String message,String id){runOnUiThread(()->{addContact(from);if(activePeer!=null&&activePeer.equals(from)&&messages!=null)appendMessage(message,false);saveMessage(from,message,false);notifyIncoming(from);});}
+                public void onDelivery(String id,String status){runOnUiThread(()->updateDelivery(id,status));}
                 public void onError(String m){final String msg=(m==null?"Relay connection failed":m); final String low=msg.toLowerCase(java.util.Locale.ROOT); if(low.contains("software caused connection abort")||low.contains("connection abort")||low.contains("connection reset")||low.contains("broken pipe")||low.contains("canceled"))return; runOnUiThread(()->{if(connectionStatus!=null){connectionStatus.setText((english?"Relay error: ":"Relay hatası: ")+msg);connectionStatus.setTextColor(RED);}toast("Relay: "+msg);});}
             }));
             e2ee.connect(url);
