@@ -24,6 +24,7 @@ public final class RealE2eeTransport implements RelayClient.Listener {
     private final int localDeviceId;
     private final Listener listener;
     private final List<Pending> pending=new ArrayList<>();
+    private volatile boolean relayReady=false;
 
     public RealE2eeTransport(Context context,String localPeerId,int localDeviceId,Listener listener)throws Exception{
         if(localPeerId==null||localPeerId.length()<8)throw new IllegalArgumentException("Invalid local peer ID");
@@ -32,12 +33,16 @@ public final class RealE2eeTransport implements RelayClient.Listener {
         this.relay=new RelayClient(this);
     }
     public void connect(String wssUrl){relay.connect(wssUrl,localPeerId);}
-    public void requestSession(String remotePeerId){relay.requestPreKey(UUID.randomUUID().toString(),remotePeerId,60000L);}
+    public void requestSession(String remotePeerId){
+        if(!relayReady){return;}
+        if(!relay.requestPreKey(UUID.randomUUID().toString(),remotePeerId,60000L)) listener.onError("Pre-key request could not be sent");
+    }
     public synchronized String sendText(String remotePeerId,int remoteDeviceId,String text){
         String id=UUID.randomUUID().toString();
+        if(!relayReady){pending.add(new Pending(id,remotePeerId,remoteDeviceId,text));return id;}
         try{
             DeviceE2eeController.CipherPacket p=e2ee.encrypt(remotePeerId,remoteDeviceId,text.getBytes(StandardCharsets.UTF_8));
-            relay.sendCiphertext(id,remotePeerId,p.bytes,p.type,localDeviceId,60000L);
+            if(!relay.sendCiphertext(id,remotePeerId,p.bytes,p.type,localDeviceId,60000L)) throw new IllegalStateException("Relay send rejected");
         }catch(Exception ex){pending.add(new Pending(id,remotePeerId,remoteDeviceId,text));requestSession(remotePeerId);}
         return id;
     }
@@ -46,12 +51,18 @@ public final class RealE2eeTransport implements RelayClient.Listener {
             Pending p=pending.get(i); if(!p.peerId.equals(peerId)||p.deviceId!=deviceId)continue;
             try{
                 DeviceE2eeController.CipherPacket cp=e2ee.encrypt(p.peerId,p.deviceId,p.text.getBytes(StandardCharsets.UTF_8));
-                relay.sendCiphertext(p.id,p.peerId,cp.bytes,cp.type,localDeviceId,60000L); pending.remove(i);
+                if(relay.sendCiphertext(p.id,p.peerId,cp.bytes,cp.type,localDeviceId,60000L)) pending.remove(i);
             }catch(Exception ex){listener.onError("E2EE pending send failed: "+ex.getMessage());}
         }
     }
     public void close(){relay.close();}
-    @Override public void onConnected(){listener.onReady();}
+    @Override public void onConnected(){
+        relayReady=true;
+        listener.onReady();
+        java.util.HashSet<String> peers=new java.util.HashSet<>();
+        synchronized(this){for(Pending p:pending) peers.add(p.peerId);}
+        for(String peer:peers) requestSession(peer);
+    }
     @Override public void onPreKeyRequest(String id,String from,long expiresAt){
         try{SignalPreKeyEnvelope b=e2ee.createLocalPreKeyBundle();relay.sendPreKey(id,from,b.encode(),60000L);}
         catch(Exception e){listener.onError("Pre-key generation failed: "+e.getMessage());}
@@ -66,5 +77,5 @@ public final class RealE2eeTransport implements RelayClient.Listener {
     }
     @Override public void onDelivery(String id,String status){listener.onDelivery(id,status);}
     @Override public void onError(String message){listener.onError(message);}
-    @Override public void onClosed(){listener.onError("Relay connection closed");}
+    @Override public void onClosed(){relayReady=false;listener.onError("Relay connection closed");}
 }
