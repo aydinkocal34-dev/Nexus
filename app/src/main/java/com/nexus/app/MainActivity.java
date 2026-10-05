@@ -12,6 +12,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
@@ -260,7 +261,10 @@ public final class MainActivity extends Activity {
     @Override protected void onCreate(Bundle b){
         super.onCreate(b);Window w=getWindow();w.setStatusBarColor(BG);w.setNavigationBarColor(BG);
         prefs=getSharedPreferences("nexus_app",MODE_PRIVATE);english=prefs.getBoolean("english",false);
-        localId=prefs.getString("localId",null);if(localId==null){localId="nx-"+UUID.randomUUID().toString().substring(0,12)+"@nexus";prefs.edit().putString("localId",localId).apply();}
+        String androidId=Settings.Secure.getString(getContentResolver(),Settings.Secure.ANDROID_ID);
+        if(androidId==null||androidId.length()<12) androidId=UUID.randomUUID().toString().replace("-","");
+        localId="nx-"+androidId.substring(0,12).toLowerCase(java.util.Locale.ROOT)+"@nexus";
+        prefs.edit().putString("localId",localId).apply();
         contactIds.addAll(prefs.getStringSet("contacts",new HashSet<>()));
         if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},100);
         ScrollView sv=new ScrollView(this);sv.setBackgroundColor(BG);root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);sv.addView(root);setContentView(sv);showHome();
