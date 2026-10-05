@@ -1,0 +1,12 @@
+{
+  "name": "nexus-relay-host",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server/server.js",
+    "test": "cd server && npm install && npm test"
+  },
+  "dependencies": {
+    "ws": "8.18.3"
+  }
+}
