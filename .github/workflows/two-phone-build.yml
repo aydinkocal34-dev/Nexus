@@ -37,7 +37,7 @@ jobs:
           mkdir -p /tmp/nexus-gradle
           cd /tmp/nexus-gradle
           printf 'rootProject.name="bootstrap"\n' > settings.gradle
-          gradle wrapper --gradle-version 9.5.1
+          gradle wrapper --gradle-version 8.13
 
       - uses: actions/setup-node@v4
         with:
