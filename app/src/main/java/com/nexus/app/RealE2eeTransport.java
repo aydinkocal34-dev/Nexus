@@ -76,7 +76,7 @@ public final class RealE2eeTransport implements RelayClient.Listener {
             }
         }catch(Exception ex){
             pending.add(new Pending(id,remotePeerId,remoteDeviceId,text));
-            outbox.save(pending);
+            persistOutbox();
             requestSession(remotePeerId);
         }
         return id;
