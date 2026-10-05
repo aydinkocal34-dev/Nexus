@@ -28,14 +28,11 @@ wss.on("connection",ws=>{
     const expiresAt=Date.now()+Math.min(Math.max(Number(m.ttlMs)||60000,1000),ttlMax);
     if(m.type==="prekey-request"||m.type==="prekey"){
       if(!target){
-        if(m.type==="prekey-request"){
-          const q=pendingPreKeys.get(m.to)||[];
-          q.push({...m,from:ws.peerId,expiresAt});
-          pendingPreKeys.set(m.to,q);
-          send(ws,{type:"delivery",id:m.id,status:"queued"});
-          return;
-        }
-        send(ws,{type:"delivery",id:m.id,status:"offline"});return;
+        const q=pendingPreKeys.get(m.to)||[];
+        q.push({...m,from:ws.peerId,expiresAt});
+        pendingPreKeys.set(m.to,q);
+        send(ws,{type:"delivery",id:m.id,status:"queued"});
+        return;
       }
       console.log(`NEXUS relay ${m.type} ${ws.peerId} -> ${m.to}`);
       send(target,{...m,from:ws.peerId,expiresAt});send(ws,{type:"delivery",id:m.id,status:"relayed"});return;
