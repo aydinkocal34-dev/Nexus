@@ -42,7 +42,9 @@ public final class RealE2eeTransport implements RelayClient.Listener {
         this.localPeerId=localPeerId;this.localDeviceId=localDeviceId;this.listener=listener;
         this.e2ee=new DeviceE2eeController(context,localPeerId,localDeviceId);
         this.outbox=new EncryptedOutbox(context);
-        this.pending.addAll(outbox.load());
+        for(EncryptedOutbox.Item item:outbox.load()){
+            this.pending.add(new Pending(item.id,item.peerId,item.deviceId,item.text));
+        }
         this.relay=new RelayClient(this);
     }
     public void connect(String wssUrl){relay.connect(wssUrl,localPeerId);}
@@ -69,7 +71,7 @@ public final class RealE2eeTransport implements RelayClient.Listener {
             DeviceE2eeController.CipherPacket p=e2ee.encrypt(remotePeerId,remoteDeviceId,text.getBytes(StandardCharsets.UTF_8));
             if(!relayReady||!relay.sendCiphertext(id,remotePeerId,p.bytes,p.type,localDeviceId,86400000L)){
                 pending.add(new Pending(id,remotePeerId,remoteDeviceId,text));
-                outbox.save(pending);
+                persistOutbox();
                 if(relayReady) requestSession(remotePeerId);
             }
         }catch(Exception ex){
@@ -79,6 +81,12 @@ public final class RealE2eeTransport implements RelayClient.Listener {
         }
         return id;
     }
+    private synchronized void persistOutbox(){
+        ArrayList<EncryptedOutbox.Item> items=new ArrayList<>();
+        for(Pending p:pending)items.add(new EncryptedOutbox.Item(p.id,p.peerId,p.deviceId,p.text));
+        outbox.save(items);
+    }
+
     private synchronized void flushPending(String peerId,int deviceId){
         for(int i=pending.size()-1;i>=0;i--){
             Pending p=pending.get(i);if(!p.peerId.equals(peerId)||p.deviceId!=deviceId)continue;
