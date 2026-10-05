@@ -77,5 +77,5 @@ public final class RealE2eeTransport implements RelayClient.Listener {
     }
     @Override public void onDelivery(String id,String status){listener.onDelivery(id,status);}
     @Override public void onError(String message){listener.onError(message);}
-    @Override public void onClosed(){relayReady=false;listener.onError("Relay connection closed");}
+    @Override public void onClosed(){relayReady=false;}
 }
