@@ -17,6 +17,7 @@ final class E2eeRuntime {
     private final Object transport;
     private final Method connectMethod;
     private final Method sendTextMethod;
+    private final Method markReadMethod;
 
     E2eeRuntime(Context context,String localPeerId,Listener listener) throws Exception {
         Class<?> transportClass=Class.forName("com.nexus.app.RealE2eeTransport");
@@ -39,13 +40,16 @@ final class E2eeRuntime {
         Constructor<?> ctor=transportClass.getConstructor(Context.class,String.class,int.class,listenerClass);
         transport=ctor.newInstance(context,localPeerId,1,proxy);
         connectMethod=transportClass.getMethod("connect",String.class);
-        sendTextMethod=transportClass.getMethod("sendText",String.class,int.class,String.class);
+sendTextMethod=transportClass.getMethod("sendText",String.class,int.class,String.class);
+        markReadMethod=transportClass.getMethod("markRead",String.class,String.class);
     }
 
     void connect(String url){
         try { connectMethod.invoke(transport,url); }
         catch(Exception e){ throw new RuntimeException(e.getCause()==null?e:e.getCause()); }
     }
+
+    void markRead(String messageId,String peer){try{markReadMethod.invoke(transport,messageId,peer);}catch(Exception ignored){}}
 
     String sendText(String peer,int deviceId,String text){
         try { return String.valueOf(sendTextMethod.invoke(transport,peer,deviceId,text)); }
