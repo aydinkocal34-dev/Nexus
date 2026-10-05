@@ -10,6 +10,7 @@ final class E2eeRuntime {
         void onReady();
         void onMessage(String from,String message,String id);
         void onDelivery(String id,String status);
+        void onClosed();
         void onError(String message);
     }
 
@@ -30,6 +31,7 @@ final class E2eeRuntime {
                         listener.onMessage(String.valueOf(args[0]),String.valueOf(args[1]),String.valueOf(args[2]));
                     else if("onDelivery".equals(n) && args!=null && args.length>=2)
                         listener.onDelivery(String.valueOf(args[0]),String.valueOf(args[1]));
+                    else if("onClosed".equals(n)) listener.onClosed();
                     else if("onError".equals(n) && args!=null && args.length>=1)
                         listener.onError(String.valueOf(args[0]));
                     return null;
