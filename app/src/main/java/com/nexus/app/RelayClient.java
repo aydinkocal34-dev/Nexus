@@ -37,12 +37,27 @@ public final class RelayClient {
     private final Listener listener;
     private WebSocket socket;
     private volatile boolean connected=false;
+    private volatile boolean closing=false;
+    private String relayUrl;
+    private String peerId;
+    private int reconnectAttempt=0;
+    private final Object reconnectLock=new Object();
 
     public RelayClient(Listener listener) {
         this.listener = listener;
     }
 
-    public void connect(String wsUrl, String peerId) {
+    public synchronized void connect(String wsUrl, String peerId) {
+        this.relayUrl=wsUrl;
+        this.peerId=peerId;
+        this.closing=false;
+        reconnectAttempt=0;
+        connectInternal();
+    }
+
+    private synchronized void connectInternal() {
+        String wsUrl=relayUrl;
+        String peerId=this.peerId;
         if (wsUrl == null || !wsUrl.startsWith("wss://")) {
             main.post(() -> listener.onError("Relay requires WSS/TLS"));
             return;
@@ -51,6 +66,7 @@ public final class RelayClient {
             main.post(() -> listener.onError("Invalid peer ID"));
             return;
         }
+        if (closing) return;
         Request request = new Request.Builder().url(wsUrl).build();
         socket = client.newWebSocket(request, new WebSocketListener() {
             @Override public void onOpen(WebSocket webSocket, Response response) {
@@ -101,11 +117,14 @@ public final class RelayClient {
             }
 
             @Override public void onFailure(WebSocket webSocket, Throwable t, Response response) {
-                connected=false; main.post(() -> listener.onError(t.getMessage() == null ? "Relay connection failed" : t.getMessage()));
+                connected=false;
+                if (!closing) scheduleReconnect();
             }
 
             @Override public void onClosed(WebSocket webSocket, int code, String reason) {
-                connected=false; main.post(listener::onClosed);
+                connected=false;
+                if (!closing) scheduleReconnect();
+                main.post(listener::onClosed);
             }
         });
     }
@@ -177,7 +196,20 @@ public final class RelayClient {
         }
     }
 
+    private void scheduleReconnect() {
+        synchronized(reconnectLock) {
+            if (closing) return;
+            int attempt=++reconnectAttempt;
+            long delay=Math.min(30000L,2000L << Math.min(attempt-1,4));
+            main.postDelayed(() -> {
+                if (!closing && !connected) connectInternal();
+            },delay);
+        }
+    }
+
     public void close() {
+        closing=true;
+        connected=false;
         if (socket != null) socket.close(1000, "client closing");
         client.dispatcher().executorService().shutdown();
     }
