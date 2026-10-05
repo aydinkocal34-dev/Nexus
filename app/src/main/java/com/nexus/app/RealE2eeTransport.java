@@ -27,6 +27,7 @@ public final class RealE2eeTransport implements RelayClient.Listener {
     private final Listener listener;
     private final List<Pending> pending=new ArrayList<>();
     private final List<PendingPreKey> pendingPreKeys=new ArrayList<>();
+    private final java.util.HashSet<String> pendingSessionRequests=new java.util.HashSet<>();
     private final java.util.HashSet<String> receivedIds=new java.util.HashSet<>();
     private volatile boolean relayReady=false;
     private final Handler main=new Handler(Looper.getMainLooper());
@@ -45,10 +46,13 @@ public final class RealE2eeTransport implements RelayClient.Listener {
     public void requestSession(String remotePeerId){
         requestSession(remotePeerId,0);
     }
-    private void requestSession(String remotePeerId,int attempt){
+    private synchronized void requestSession(String remotePeerId,int attempt){
         if(!relayReady)return;
+        if(pendingSessionRequests.contains(remotePeerId))return;
         String id=UUID.randomUUID().toString();
+        pendingSessionRequests.add(remotePeerId);
         if(relay.requestPreKey(id,remotePeerId,60000L)) return;
+        pendingSessionRequests.remove(remotePeerId);
         if(attempt<5) main.postDelayed(()->requestSession(remotePeerId,attempt+1),750L);
     }
     public synchronized String sendText(String remotePeerId,int remoteDeviceId,String text){
@@ -95,13 +99,17 @@ public final class RealE2eeTransport implements RelayClient.Listener {
             if(relay.sendPreKey(p.id,p.toPeer,p.bundle,60000L))pendingPreKeys.remove(i);
         }
     }
-    @Override public void onPreKey(String id,String from,String bundle,long expiresAt){
+    @Override public synchronized void onPreKey(String id,String from,String bundle,long expiresAt){
+        pendingSessionRequests.remove(from);
         try{
             SignalPreKeyEnvelope e=SignalPreKeyEnvelope.decode(bundle);
             e2ee.establishSession(from,e.deviceId,e);
             flushPending(from,e.deviceId);
             listener.onReady();
-        }catch(Exception e){listener.onError("E2EE session setup failed: "+e.getMessage());}
+        }catch(Exception e){
+            listener.onError("E2EE session setup failed: "+e.getMessage());
+            if(relayReady) requestSession(from,0);
+        }
     }
     @Override public void onCiphertext(String id,String from,int fromDeviceId,byte[] ciphertext,int type,long expiresAt){
         synchronized(receivedIds){
