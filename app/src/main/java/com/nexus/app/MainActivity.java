@@ -11,7 +11,6 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Bitmap;
-import android.graphics.drawable.BitmapDrawable;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.MultiFormatWriter;
 import com.google.zxing.common.BitMatrix;
@@ -43,6 +42,7 @@ import java.util.Set;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import android.text.TextUtils;
 import android.util.Base64;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
@@ -74,11 +74,11 @@ public final class MainActivity extends FragmentActivity {
     private int dp(float v){ return Math.round(v * getResources().getDisplayMetrics().density); }
     private GradientDrawable bg(int c,float r){GradientDrawable d=new GradientDrawable();d.setColor(c);d.setCornerRadius(r);return d;}
     private TextView text(String s,float size,int color){TextView v=new TextView(this);v.setText(s);v.setTextSize(size);v.setTextColor(color);v.setIncludeFontPadding(true);return v;}
-    private TextView title(String s){TextView v=text(s,22,TEXT);v.setTypeface(Typeface.DEFAULT,Typeface.BOLD);v.setGravity(Gravity.CENTER_VERTICAL);return v;}
+    private TextView title(String s){TextView v=text(s,21,TEXT);v.setTypeface(Typeface.DEFAULT,Typeface.BOLD);v.setGravity(Gravity.CENTER_VERTICAL);v.setMaxLines(1);v.setEllipsize(TextUtils.TruncateAt.MIDDLE);return v;}
     private LinearLayout screen(){LinearLayout s=new LinearLayout(this);s.setOrientation(LinearLayout.VERTICAL);s.setPadding(dp(16),dp(20),dp(16),dp(24));s.setBackgroundColor(BG);return s;}
     private LinearLayout card(){LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(18),dp(14),dp(18),dp(14));GradientDrawable d=bg(PANEL,dp(18));d.setStroke(dp(1),Color.rgb(18,76,126));c.setBackground(d);return c;}
-    private Button button(String s){Button b=new Button(this);b.setText(s);b.setTextColor(Color.WHITE);b.setTextSize(15);b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);b.setAllCaps(false);b.setGravity(Gravity.CENTER);b.setMinHeight(0);b.setMinimumHeight(0);b.setPadding(dp(12),0,dp(12),0);b.setIncludeFontPadding(true);GradientDrawable d=bg(BLUE,dp(16));d.setStroke(dp(1),Color.rgb(62,171,255));b.setBackground(d);return b;}
-    private EditText field(String hint){EditText e=new EditText(this);e.setHint(hint);e.setHintTextColor(MUTED);e.setTextColor(TEXT);e.setTextSize(15);e.setSingleLine(true);e.setPadding(17,6,17,6);e.setBackground(bg(CARD,16));return e;}
+    private Button button(String s){Button b=new Button(this);b.setText(s);b.setTextColor(Color.WHITE);b.setTextSize(17);b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);b.setAllCaps(false);b.setGravity(Gravity.CENTER);b.setMinHeight(0);b.setMinimumHeight(0);b.setPadding(dp(12),0,dp(12),0);b.setIncludeFontPadding(true);GradientDrawable d=bg(BLUE,dp(16));d.setStroke(dp(1),Color.rgb(62,171,255));b.setBackground(d);return b;}
+    private EditText field(String hint){EditText e=new EditText(this);e.setHint(hint);e.setHintTextColor(MUTED);e.setTextColor(TEXT);e.setTextSize(17);e.setSingleLine(true);e.setPadding(17,6,17,6);e.setBackground(bg(CARD,16));return e;}
     private TextView icon(String s,View.OnClickListener l){TextView v=text(s,25,TEXT);v.setGravity(Gravity.CENTER);v.setBackground(bg(CARD,26));v.setOnClickListener(l);return v;}
     private void space(LinearLayout p,int h){p.addView(new View(this),new LinearLayout.LayoutParams(1,h));}
     private void show(LinearLayout p){root.removeAllViews();root.addView(p,new LinearLayout.LayoutParams(-1,-1));}
@@ -105,11 +105,11 @@ public final class MainActivity extends FragmentActivity {
         top.addView(arrow,new LinearLayout.LayoutParams(0,dp(42),1)); box.addView(top,new LinearLayout.LayoutParams(-1,dp(42)));
 
         TextView n=text(name,16,TEXT); n.setTypeface(Typeface.DEFAULT,Typeface.BOLD); box.addView(n,new LinearLayout.LayoutParams(-1,dp(23)));
-        TextView q=text(sub,11,MUTED); box.addView(q,new LinearLayout.LayoutParams(-1,dp(20)));
+        TextView q=text(sub,13,MUTED); box.addView(q,new LinearLayout.LayoutParams(-1,dp(20)));
         return box;
     }
 
-    private TextView nav(String i,String s,int c){TextView v=text(i+"\n"+s,10,c);v.setGravity(Gravity.CENTER);return v;}
+    private TextView nav(String i,String s,int c){TextView v=text(i+"\n"+s,12,c);v.setGravity(Gravity.CENTER);return v;}
 
     private void lockApp(){
         if(isFinishing()||authInProgress)return;
@@ -334,7 +334,7 @@ public final class MainActivity extends FragmentActivity {
     }
 
     private void appendMessage(String s,boolean mine){
-        TextView m=text(s,15,TEXT); m.setGravity(Gravity.CENTER_VERTICAL); m.setPadding(dp(16),dp(11),dp(16),dp(11));
+        TextView m=text(s,17,TEXT); m.setGravity(Gravity.CENTER_VERTICAL); m.setPadding(dp(16),dp(11),dp(16),dp(11));
         GradientDrawable bubble=bg(mine?BLUE:Color.rgb(18,38,61),dp(20));
         bubble.setStroke(dp(1),mine?Color.rgb(54,164,255):Color.rgb(31,76,117)); m.setBackground(bubble);
         m.setElevation(dp(2));
@@ -343,7 +343,7 @@ public final class MainActivity extends FragmentActivity {
 
     private void appendOutgoingMessage(String s,String messageId){
         LinearLayout wrap=new LinearLayout(this);wrap.setOrientation(LinearLayout.VERTICAL);wrap.setGravity(Gravity.RIGHT);
-        TextView body=text(s,15,TEXT);body.setGravity(Gravity.CENTER_VERTICAL);body.setPadding(dp(16),dp(11),dp(16),dp(3));
+        TextView body=text(s,17,TEXT);body.setGravity(Gravity.CENTER_VERTICAL);body.setPadding(dp(16),dp(11),dp(16),dp(3));
         GradientDrawable bubble=bg(BLUE,dp(20));bubble.setStroke(dp(1),Color.rgb(54,164,255));body.setBackground(bubble);
         TextView state=text("Gönderiliyor",11,Color.rgb(210,225,245));state.setGravity(Gravity.RIGHT);state.setPadding(dp(10),0,dp(12),dp(8));
         wrap.addView(body,new LinearLayout.LayoutParams(-2,-2));wrap.addView(state,new LinearLayout.LayoutParams(-2,-2));
@@ -389,11 +389,14 @@ public final class MainActivity extends FragmentActivity {
     private void saveMessage(String peer,String msg,boolean mine){
         try{
             String key="msg_secure_"+peer;
-            String plain=prefs.getString(key,"");
+            String encrypted=prefs.getString(key,"");
+            String plain=encrypted.isEmpty()?"":decryptLocalMessages(encrypted);
             String record=(mine?"1":"0")+":"+Base64.encodeToString(msg.getBytes(StandardCharsets.UTF_8),Base64.NO_WRAP);
             plain=plain.isEmpty()?record:plain+"\\n"+record;
             prefs.edit().putString(key,encryptLocalMessages(plain)).remove("msg_"+peer).apply();
-        }catch(Exception e){toast("Yerel güvenli kayıt hatası");}
+        }catch(Exception e){
+            toast("Yerel güvenli kayıt hatası: "+e.getClass().getSimpleName());
+        }
     }
     private void loadLocalMessages(String peer){
         try{
@@ -439,7 +442,7 @@ public final class MainActivity extends FragmentActivity {
             if(e2ee!=null){try{e2ee=null;}catch(Exception ignored){}}
             e2ee=new E2eeRuntime(this,localId,(new E2eeRuntime.Listener(){
                 public void onReady(){relayConnected=true;runOnUiThread(()->{if(connectionStatus!=null){connectionStatus.setText("●  "+(english?"Secure relay connected • E2EE ready":"Güvenli relay bağlı • E2EE hazır"));connectionStatus.setTextColor(GREEN);}toast(english?"NEXUS secure relay connected":"NEXUS güvenli relay bağlandı");});}
-                public void onMessage(String from,String message,String id){runOnUiThread(()->{addContact(from);if(activePeer!=null&&activePeer.equals(from)&&messages!=null)appendMessage(message,false);saveMessage(from,message,false);notifyIncoming(from);});}
+                public void onMessage(String from,String message,String id){runOnUiThread(()->{addContact(from);boolean open=activePeer!=null&&activePeer.equals(from)&&messages!=null;if(open){appendMessage(message,false);if(e2ee!=null)e2ee.markRead(id,from);}saveMessage(from,message,false);notifyIncoming(from);});}
                 public void onDelivery(String id,String status){runOnUiThread(()->updateDelivery(id,status));}
                 public void onClosed(){relayConnected=false;runOnUiThread(()->{if(connectionStatus!=null){connectionStatus.setText(english?"Reconnecting securely...":"Güvenli bağlantı yeniden kuruluyor...");connectionStatus.setTextColor(MUTED);}});}
                 public void onError(String m){final String msg=(m==null?"Relay connection failed":m); final String low=msg.toLowerCase(java.util.Locale.ROOT); if(low.contains("software caused connection abort")||low.contains("connection abort")||low.contains("connection reset")||low.contains("broken pipe")||low.contains("canceled"))return; runOnUiThread(()->{if(connectionStatus!=null){connectionStatus.setText((english?"Relay error: ":"Relay hatası: ")+msg);connectionStatus.setTextColor(RED);}toast("Relay: "+msg);});}
