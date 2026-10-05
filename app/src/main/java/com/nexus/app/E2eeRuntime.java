@@ -9,6 +9,7 @@ final class E2eeRuntime {
     interface Listener {
         void onReady();
         void onMessage(String from,String message,String id);
+        void onDelivery(String id,String status);
         void onError(String message);
     }
 
@@ -27,6 +28,8 @@ final class E2eeRuntime {
                     if("onReady".equals(n)) listener.onReady();
                     else if("onMessage".equals(n) && args!=null && args.length>=3)
                         listener.onMessage(String.valueOf(args[0]),String.valueOf(args[1]),String.valueOf(args[2]));
+                    else if("onDelivery".equals(n) && args!=null && args.length>=2)
+                        listener.onDelivery(String.valueOf(args[0]),String.valueOf(args[1]));
                     else if("onError".equals(n) && args!=null && args.length>=1)
                         listener.onError(String.valueOf(args[0]));
                     return null;
@@ -42,8 +45,8 @@ final class E2eeRuntime {
         catch(Exception e){ throw new RuntimeException(e.getCause()==null?e:e.getCause()); }
     }
 
-    void sendText(String peer,int deviceId,String text){
-        try { sendTextMethod.invoke(transport,peer,deviceId,text); }
+    String sendText(String peer,int deviceId,String text){
+        try { return String.valueOf(sendTextMethod.invoke(transport,peer,deviceId,text)); }
         catch(Exception e){ throw new RuntimeException(e.getCause()==null?e:e.getCause()); }
     }
 }
