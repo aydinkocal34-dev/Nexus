@@ -5,6 +5,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import android.os.Handler;
+import android.os.Looper;
 
 public final class RealE2eeTransport implements RelayClient.Listener {
     public interface Listener {
@@ -27,6 +29,7 @@ public final class RealE2eeTransport implements RelayClient.Listener {
     private final List<PendingPreKey> pendingPreKeys=new ArrayList<>();
     private final java.util.HashSet<String> receivedIds=new java.util.HashSet<>();
     private volatile boolean relayReady=false;
+    private final Handler main=new Handler(Looper.getMainLooper());
     private static final class PendingPreKey {
         final String id,toPeer,bundle;
         PendingPreKey(String id,String toPeer,String bundle){this.id=id;this.toPeer=toPeer;this.bundle=bundle;}
@@ -40,8 +43,13 @@ public final class RealE2eeTransport implements RelayClient.Listener {
     }
     public void connect(String wssUrl){relay.connect(wssUrl,localPeerId);}
     public void requestSession(String remotePeerId){
+        requestSession(remotePeerId,0);
+    }
+    private void requestSession(String remotePeerId,int attempt){
         if(!relayReady)return;
-        if(!relay.requestPreKey(UUID.randomUUID().toString(),remotePeerId,60000L)) listener.onError("Pre-key request could not be sent");
+        String id=UUID.randomUUID().toString();
+        if(relay.requestPreKey(id,remotePeerId,60000L)) return;
+        if(attempt<5) main.postDelayed(()->requestSession(remotePeerId,attempt+1),750L);
     }
     public synchronized String sendText(String remotePeerId,int remoteDeviceId,String text){
         String id=UUID.randomUUID().toString();
@@ -106,10 +114,10 @@ public final class RealE2eeTransport implements RelayClient.Listener {
                 receivedIds.add(id);
                 listener.onMessage(from,new String(clear,StandardCharsets.UTF_8),id);
                 relay.sendReceivedReceipt(id,from);
-                relay.sendReadReceipt(id,from);
             }catch(Exception e){listener.onError("E2EE decrypt failed: "+e.getMessage());}
         }
     }
+    public void markRead(String messageId,String peerId){ if(relayReady) relay.sendReadReceipt(messageId,peerId); }
     @Override public void onDelivery(String id,String status){listener.onDelivery(id,status);}
     @Override public void onClosed(){relayReady=false;listener.onClosed();}
     @Override public void onError(String message){listener.onError(message);}
