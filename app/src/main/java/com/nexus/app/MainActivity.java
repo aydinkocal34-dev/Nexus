@@ -24,6 +24,9 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Button;
 import android.widget.Toast;
+import androidx.biometric.BiometricManager;
+import androidx.biometric.BiometricPrompt;
+import androidx.core.content.ContextCompat;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
@@ -44,6 +47,9 @@ public final class MainActivity extends Activity {
     private TextView connectionStatus;
     private final ArrayList<String> contactIds=new ArrayList<>();
     private final Map<String,TextView> deliveryViews=new HashMap<>();
+    private boolean securityUnlocked=false;
+    private boolean authInProgress=false;
+    private BiometricPrompt biometricPrompt;
 
     private int dp(float v){ return Math.round(v * getResources().getDisplayMetrics().density); }
     private GradientDrawable bg(int c,float r){GradientDrawable d=new GradientDrawable();d.setColor(c);d.setCornerRadius(r);return d;}
@@ -84,6 +90,40 @@ public final class MainActivity extends Activity {
     }
 
     private TextView nav(String i,String s,int c){TextView v=text(i+"\n"+s,10,c);v.setGravity(Gravity.CENTER);return v;}
+
+    private void lockApp(){
+        if(isFinishing()||authInProgress)return;
+        securityUnlocked=false;
+        BiometricManager bm=BiometricManager.from(this);
+        int can=bm.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG|BiometricManager.Authenticators.DEVICE_CREDENTIAL);
+        if(can!=BiometricManager.BIOMETRIC_SUCCESS){
+            toast("NEXUS için cihazda PIN, desen veya biyometri ayarlamalısın.");
+            return;
+        }
+        authInProgress=true;
+        BiometricPrompt.AuthenticationCallback cb=new BiometricPrompt.AuthenticationCallback(){
+            @Override public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult result){authInProgress=false;securityUnlocked=true;}
+            @Override public void onAuthenticationFailed(){toast("Kimlik doğrulama başarısız");}
+            @Override public void onAuthenticationError(int code,CharSequence err){authInProgress=false;securityUnlocked=false;if(code==BiometricPrompt.ERROR_USER_CANCELED||code==BiometricPrompt.ERROR_CANCELED){new android.os.Handler(getMainLooper()).postDelayed(()->lockApp(),300);}else toast("NEXUS kilidi: "+err);}
+        };
+        biometricPrompt=new BiometricPrompt(this,ContextCompat.getMainExecutor(this),cb);
+        BiometricPrompt.PromptInfo info=new BiometricPrompt.PromptInfo.Builder()
+                .setTitle("NEXUS Güvenlik Kilidi")
+                .setSubtitle("Parmak izi veya cihaz PIN/deseni ile devam edin")
+                .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG|BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                .build();
+        biometricPrompt.authenticate(info);
+    }
+
+    @Override protected void onResume(){
+        super.onResume();
+        if(root!=null&&!securityUnlocked&&!authInProgress)new android.os.Handler(getMainLooper()).postDelayed(()->lockApp(),120);
+    }
+
+    @Override protected void onStop(){
+        super.onStop();
+        if(!authInProgress)securityUnlocked=false;
+    }
 
     private void showHome(){
         // Reference layout: normal Android dp sizing, generous spacing, no overlap.
