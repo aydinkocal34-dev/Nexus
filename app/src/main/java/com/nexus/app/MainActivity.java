@@ -33,6 +33,15 @@ import java.util.Set;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import android.util.Base64;
+import java.nio.charset.StandardCharsets;
+import java.security.KeyStore;
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
+import android.security.keystore.KeyGenParameterSpec;
+import android.security.keystore.KeyProperties;
 
 public final class MainActivity extends FragmentActivity {
     private static final int BG=Color.rgb(4,13,25), PANEL=Color.rgb(11,26,44), CARD=Color.rgb(17,35,57);
@@ -280,8 +289,54 @@ public final class MainActivity extends FragmentActivity {
         if("delivered".equals(status)||"read".equals(status)) v.setTextColor(BLUE);
     }
 
-    private void saveMessage(String peer,String msg,boolean mine){String k="msg_"+peer;Set<String> old=prefs.getStringSet(k,new HashSet<>());HashSet<String> n=new HashSet<>(old);n.add((mine?"1|":"0|")+msg);prefs.edit().putStringSet(k,n).apply();}
-    private void loadLocalMessages(String peer){for(String x:prefs.getStringSet("msg_"+peer,new HashSet<>())){int i=x.indexOf('|');appendMessage(i>0?x.substring(i+1):x,i>0&&x.charAt(0)=='1');}}
+    private SecretKey localMessageKey() throws Exception{
+        KeyStore ks=KeyStore.getInstance("AndroidKeyStore");ks.load(null);
+        if(!ks.containsAlias("nexus_local_messages")){
+            KeyGenerator kg=KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES,"AndroidKeyStore");
+            kg.init(new KeyGenParameterSpec.Builder("nexus_local_messages",KeyProperties.PURPOSE_ENCRYPT|KeyProperties.PURPOSE_DECRYPT)
+                    .setBlockModes(KeyProperties.BLOCK_MODE_GCM).setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE).setKeySize(256).build());
+            kg.generateKey();
+        }
+        return ((KeyStore.SecretKeyEntry)ks.getEntry("nexus_local_messages",null)).getSecretKey();
+    }
+    private String encryptLocalMessages(String plain) throws Exception{
+        byte[] iv=new byte[12];new java.security.SecureRandom().nextBytes(iv);
+        Cipher c=Cipher.getInstance("AES/GCM/NoPadding");c.init(Cipher.ENCRYPT_MODE,localMessageKey(),new GCMParameterSpec(128,iv));
+        byte[] out=c.doFinal(plain.getBytes(StandardCharsets.UTF_8));
+        return Base64.encodeToString(iv,Base64.NO_WRAP)+"."+Base64.encodeToString(out,Base64.NO_WRAP);
+    }
+    private String decryptLocalMessages(String blob) throws Exception{
+        String[] p=blob.split("\\.",2);if(p.length!=2)throw new IllegalArgumentException("invalid local message blob");
+        byte[] iv=Base64.decode(p[0],Base64.NO_WRAP),data=Base64.decode(p[1],Base64.NO_WRAP);
+        Cipher c=Cipher.getInstance("AES/GCM/NoPadding");c.init(Cipher.DECRYPT_MODE,localMessageKey(),new GCMParameterSpec(128,iv));
+        return new String(c.doFinal(data),StandardCharsets.UTF_8);
+    }
+    private void saveMessage(String peer,String msg,boolean mine){
+        try{
+            String key="msg_secure_"+peer;
+            String plain=prefs.getString(key,"");
+            String record=(mine?"1":"0")+":"+Base64.encodeToString(msg.getBytes(StandardCharsets.UTF_8),Base64.NO_WRAP);
+            plain=plain.isEmpty()?record:plain+"\\n"+record;
+            prefs.edit().putString(key,encryptLocalMessages(plain)).remove("msg_"+peer).apply();
+        }catch(Exception e){toast("Yerel güvenli kayıt hatası");}
+    }
+    private void loadLocalMessages(String peer){
+        try{
+            String secure=prefs.getString("msg_secure_"+peer,"");
+            if(!secure.isEmpty()){
+                for(String x:decryptLocalMessages(secure).split("\\n")){
+                    int i=x.indexOf(':');if(i>0)appendMessage(new String(Base64.decode(x.substring(i+1),Base64.NO_WRAP),StandardCharsets.UTF_8),x.charAt(0)=='1');
+                }
+                return;
+            }
+            Set<String> legacy=prefs.getStringSet("msg_"+peer,new HashSet<>());
+            if(!legacy.isEmpty()){
+                for(String x:legacy){int i=x.indexOf('|');if(i>0)appendMessage(x.substring(i+1),x.charAt(0)=='1');}
+                for(String x:legacy){int i=x.indexOf('|');if(i>0)saveMessage(peer,x.substring(i+1),x.charAt(0)=='1');}
+                prefs.edit().remove("msg_"+peer).apply();
+            }
+        }catch(Exception e){toast("Yerel güvenli kayıt açılamadı");}
+    }
 
     private void showPrivacy(){
         LinearLayout p=screen();header(p,english?"Privacy & Security":"Gizlilik ve Güvenlik",english?"Device security center":"NEXUS güvenlik merkezi",v->showHome());
