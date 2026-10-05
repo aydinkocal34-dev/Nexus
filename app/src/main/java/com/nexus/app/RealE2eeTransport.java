@@ -11,6 +11,7 @@ public final class RealE2eeTransport implements RelayClient.Listener {
         void onReady();
         void onMessage(String fromPeerId,String message,String messageId);
         void onDelivery(String id,String status);
+        void onClosed();
         void onError(String message);
     }
     private static final class Pending {
@@ -110,6 +111,6 @@ public final class RealE2eeTransport implements RelayClient.Listener {
         }
     }
     @Override public void onDelivery(String id,String status){listener.onDelivery(id,status);}
+    @Override public void onClosed(){relayReady=false;listener.onClosed();}
     @Override public void onError(String message){listener.onError(message);}
-    @Override public void onClosed(){relayReady=false;}
 }
