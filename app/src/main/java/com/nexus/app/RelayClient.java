@@ -55,8 +55,9 @@ public final class RelayClient {
         if(closing||connected)return;
 
         Request request=new Request.Builder().url(wsUrl).build();
-        final WebSocket newSocket=client.newWebSocket(request,new WebSocketListener(){
-            private boolean current(){return socket==newSocket;}
+        final WebSocket[] holder=new WebSocket[1];
+        WebSocket newSocket=client.newWebSocket(request,new WebSocketListener(){
+            private boolean current(){return socket==holder[0];}
 
             @Override public void onOpen(WebSocket webSocket,Response response){
                 if(!current()){webSocket.close(1000,"stale");return;}
@@ -114,6 +115,7 @@ public final class RelayClient {
                 main.post(listener::onClosed);
             }
         });
+        holder[0]=newSocket;
         socket=newSocket;
     }
 
