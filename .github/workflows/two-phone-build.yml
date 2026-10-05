@@ -8,38 +8,30 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
+
     steps:
-      - name: CI diagnostics
-        run: |
-          echo "NEXUS CI START"
-          echo "runner=$RUNNER_NAME"
-          echo "os=$RUNNER_OS"
-          echo "sha=$GITHUB_SHA"
-          echo "run=$GITHUB_RUN_NUMBER"
-          echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          uname -a
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
-          cache: gradle
 
-      - uses: android-actions/setup-android@v4
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
 
-      - name: Prepare Gradle
-        run: |
-          mkdir -p /tmp/nexus-gradle
-          cd /tmp/nexus-gradle
-          printf 'rootProject.name="bootstrap"\n' > settings.gradle
-          gradle wrapper --gradle-version 8.13
-
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
@@ -47,26 +39,33 @@ jobs:
 
       - name: Relay server tests
         run: |
+          echo "== Relay tests START =="
           cd server
           npm install --no-audit --no-fund
           npm test
+          echo "== Relay tests END =="
 
-      - name: JVM tests
-        run: /tmp/nexus-gradle/gradlew -p "$GITHUB_WORKSPACE" :app:test --stacktrace --no-daemon
-
-      - name: Build ARM64 APK
-        run: /tmp/nexus-gradle/gradlew -p "$GITHUB_WORKSPACE" :app:assembleDebug --stacktrace --no-daemon
+      - name: JVM tests + ARM64 APK
+        run: |
+          echo "== Android tests/build START =="
+          date -u
+          gradle -p "$GITHUB_WORKSPACE" :app:test :app:assembleDebug --stacktrace --no-daemon
+          date -u
+          echo "== Android tests/build END =="
 
       - name: Prepare APK
         run: |
+          set -e
           mkdir -p dist
           APK=$(find app/build/outputs/apk/debug -name 'app-arm64-v8a-debug.apk' | head -1)
           test -n "$APK"
-          cp "$APK" dist/NEXUS-0.22.2-arm64.apk
-          test -s dist/NEXUS-0.22.2-arm64.apk
-          shasum -a 256 dist/NEXUS-0.22.2-arm64.apk
+          cp "$APK" dist/NEXUS-0.22.3-secure-lock-arm64.apk
+          test -s dist/NEXUS-0.22.3-secure-lock-arm64.apk
+          echo "APK: dist/NEXUS-0.22.3-secure-lock-arm64.apk"
+          shasum -a 256 dist/NEXUS-0.22.3-secure-lock-arm64.apk
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload ARM64 APK
+        uses: actions/upload-artifact@v4
         with:
           name: NEXUS-two-phone-arm64
-          path: dist/NEXUS-0.22.2-arm64.apk
+          path: dist/NEXUS-0.22.3-secure-lock-arm64.apk
