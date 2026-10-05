@@ -31,6 +31,7 @@ public final class RelayClient {
 
     private final OkHttpClient client = new OkHttpClient.Builder()
             .readTimeout(0, TimeUnit.MILLISECONDS)
+            .pingInterval(15, TimeUnit.SECONDS)
             .build();
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Listener listener;
