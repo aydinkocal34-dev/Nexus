@@ -1,7 +1,7 @@
 package com.nexus.app;
 
 import android.Manifest;
-import android.app.Activity;
+import androidx.fragment.app.FragmentActivity;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
@@ -34,7 +34,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public final class MainActivity extends Activity {
+public final class MainActivity extends FragmentActivity {
     private static final int BG=Color.rgb(4,13,25), PANEL=Color.rgb(11,26,44), CARD=Color.rgb(17,35,57);
     private static final int BLUE=Color.rgb(20,128,255), TEXT=Color.WHITE, MUTED=Color.rgb(158,178,200);
     private static final int GREEN=Color.rgb(47,202,119), RED=Color.rgb(255,82,100);
