@@ -216,10 +216,30 @@ public final class MainActivity extends FragmentActivity {
         if(contactIds.isEmpty()){LinearLayout empty=card();empty.setGravity(Gravity.CENTER);TextView e=text(english?"◌\nNo conversations yet\nAdd a NEXUS ID to start.":"◌\nHenüz sohbet yok\nBaşlamak için NEXUS ID ekleyin.",15,MUTED);e.setGravity(Gravity.CENTER);empty.addView(e,new LinearLayout.LayoutParams(-1,dp(130)));p.addView(empty,new LinearLayout.LayoutParams(-1,0,1));}
         else{
             LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);
-            for(String id:contactIds){LinearLayout c=card();TextView a=text("●  "+id,16,TEXT);a.setTypeface(Typeface.DEFAULT,Typeface.BOLD);c.addView(a);c.addView(text(english?"Tap to open encrypted chat":"Şifreli sohbeti açmak için dokunun",12,MUTED));c.setOnClickListener(v->showChat(id));list.addView(c,new LinearLayout.LayoutParams(-1,dp(78)));space(list,dp(8));}
+            for(String id:contactIds){LinearLayout c=card();TextView a=text("●  "+id,16,TEXT);a.setTypeface(Typeface.DEFAULT,Typeface.BOLD);c.addView(a);c.addView(text(english?"Tap to open encrypted chat":"Şifreli sohbeti açmak için dokunun",12,MUTED));c.setOnClickListener(v->showChat(id));c.setOnLongClickListener(v->{confirmDeleteChat(id);return true;});list.addView(c,new LinearLayout.LayoutParams(-1,dp(78)));space(list,dp(8));}
             p.addView(list,new LinearLayout.LayoutParams(-1,0,1));
         }
         Button add=button(english?"New secure chat":"Yeni güvenli sohbet");add.setOnClickListener(v->showIdEntry());p.addView(add,new LinearLayout.LayoutParams(-1,dp(56)));show(p);
+    }
+
+    private void confirmDeleteChat(String id){
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(english?"Delete conversation":"Sohbeti sil")
+                .setMessage(english?"Delete this contact and its local encrypted conversation?":"Bu kişiyi ve bu kişiyle olan yerel şifreli sohbeti tamamen silmek istiyor musun?")
+                .setNegativeButton(english?"Cancel":"İptal",null)
+                .setPositiveButton(english?"Delete":"Sil",(d,w)->deleteChat(id))
+                .show();
+    }
+
+    private void deleteChat(String id){
+        contactIds.remove(id);
+        prefs.edit().putStringSet("contacts",new HashSet<>(contactIds))
+                .remove("msg_secure_"+id)
+                .remove("msg_"+id)
+                .apply();
+        if(id.equals(activePeer)){activePeer=null;messages=null;}
+        showChats();
+        toast(english?"Conversation deleted from this device":"Sohbet bu cihazdan tamamen silindi");
     }
 
     private void showContacts(){
