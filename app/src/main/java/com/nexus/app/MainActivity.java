@@ -10,6 +10,13 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.MultiFormatWriter;
+import com.google.zxing.common.BitMatrix;
+import com.journeyapps.barcodescanner.ScanContract;
+import com.journeyapps.barcodescanner.ScanOptions;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
@@ -62,6 +69,7 @@ public final class MainActivity extends FragmentActivity {
     private boolean securityUnlocked=false;
     private boolean authInProgress=false;
     private BiometricPrompt biometricPrompt;
+    private androidx.activity.result.ActivityResultLauncher<ScanOptions> qrScannerLauncher;
 
     private int dp(float v){ return Math.round(v * getResources().getDisplayMetrics().density); }
     private GradientDrawable bg(int c,float r){GradientDrawable d=new GradientDrawable();d.setColor(c);d.setCornerRadius(r);return d;}
@@ -261,8 +269,52 @@ public final class MainActivity extends FragmentActivity {
         EditText id=field("kullanici@nexus");p.addView(id,new LinearLayout.LayoutParams(-1,58));space(p,12);
         Button add=button(english?"Add contact":"Kişiyi Ekle");
         add.setOnClickListener(v->{String x=id.getText().toString().trim().toLowerCase();if(x.isEmpty()){id.setError(english?"NEXUS ID required":"NEXUS ID gerekli");return;}if(!x.contains("@"))x+="@nexus";addContact(x);showChat(x);});p.addView(add,new LinearLayout.LayoutParams(-1,58));
-        space(p,20);LinearLayout q=card();q.addView(text("▣  QR",18,TEXT));q.addView(text(english?"QR contact exchange is ready for integration.":"QR kişi değişimi için güvenli ID hazırlanmıştır.",12,MUTED));p.addView(q);
+        space(p,18);
+        LinearLayout q=card();
+        TextView qt=text("▣  "+(english?"QR CONTACT EXCHANGE":"QR KİŞİ DEĞİŞİMİ"),18,TEXT);qt.setTypeface(Typeface.DEFAULT,Typeface.BOLD);q.addView(qt);
+        q.addView(text(english?"Show your NEXUS ID as a QR code or scan another device.":"NEXUS ID'nizi QR kod olarak gösterin veya diğer cihazın QR kodunu okutun.",15,MUTED));
+        space(q,dp(12));
+        LinearLayout qrRow=new LinearLayout(this);qrRow.setGravity(Gravity.CENTER);
+        Button showQr=button(english?"Show my QR":"QR Kodumu Göster");
+        Button scanQr=button(english?"Scan QR":"QR Kod Tara");
+        showQr.setOnClickListener(v->showMyQr());
+        scanQr.setOnClickListener(v->scanNexusQr());
+        qrRow.addView(showQr,new LinearLayout.LayoutParams(0,dp(54),1));
+        qrRow.addView(new View(this),new LinearLayout.LayoutParams(dp(10),1));
+        qrRow.addView(scanQr,new LinearLayout.LayoutParams(0,dp(54),1));
+        q.addView(qrRow);
+        p.addView(q);
         p.addView(new View(this),new LinearLayout.LayoutParams(-1,0,1));p.addView(text("🔒 "+(english?"Messages are encrypted on the device.":"Mesajlar cihaz üzerinde şifrelenir."),13,MUTED));show(p);
+    }
+
+    private void showMyQr(){
+        LinearLayout p=screen();
+        header(p,english?"My NEXUS QR":"NEXUS QR Kodum",english?"Scan this code on the other device":"Diğer cihazdan bu kodu okutun",v->showIdEntry());
+        space(p,20);
+        LinearLayout box=card();box.setGravity(Gravity.CENTER);
+        TextView idText=text(localId,18,BLUE);idText.setTypeface(Typeface.DEFAULT,Typeface.BOLD);idText.setGravity(Gravity.CENTER);box.addView(idText,new LinearLayout.LayoutParams(-1,dp(40)));
+        ImageView qr=new ImageView(this);qr.setScaleType(ImageView.ScaleType.CENTER_INSIDE);qr.setPadding(dp(12),dp(12),dp(12),dp(12));
+        try{
+            BitMatrix matrix=new MultiFormatWriter().encode(localId,BarcodeFormat.QR_CODE,dp(280),dp(280));
+            Bitmap bitmap=Bitmap.createBitmap(matrix.getWidth(),matrix.getHeight(),Bitmap.Config.ARGB_8888);
+            for(int x=0;x<matrix.getWidth();x++) for(int y=0;y<matrix.getHeight();y++) bitmap.setPixel(x,y,matrix.get(x,y)?Color.BLACK:Color.WHITE);
+            qr.setImageBitmap(bitmap);
+        }catch(Exception e){ toast(english?"QR generation failed":"QR oluşturulamadı"); }
+        box.addView(qr,new LinearLayout.LayoutParams(-1,dp(320)));
+        p.addView(box,new LinearLayout.LayoutParams(-1,dp(380)));
+        p.addView(new View(this),new LinearLayout.LayoutParams(-1,0,1));
+        Button scan=button(english?"Scan another device":"Diğer cihazın QR Kodunu Tara");scan.setOnClickListener(v->scanNexusQr());p.addView(scan,new LinearLayout.LayoutParams(-1,dp(56)));
+        show(p);
+    }
+
+    private void scanNexusQr(){
+        if(qrScannerLauncher==null){toast(english?"QR scanner is not ready":"QR tarayıcı hazır değil");return;}
+        ScanOptions options=new ScanOptions();
+        options.setDesiredBarcodeFormats(ScanOptions.QR_CODE);
+        options.setPrompt(english?"Point the camera at a NEXUS QR code":"Kamerayı NEXUS QR koduna doğrultun");
+        options.setBeepEnabled(false);
+        options.setOrientationLocked(true);
+        qrScannerLauncher.launch(options);
     }
 
     private void addContact(String id){
@@ -427,6 +479,13 @@ public final class MainActivity extends FragmentActivity {
         prefs.edit().putString("localId",localId).apply();
         contactIds.addAll(prefs.getStringSet("contacts",new HashSet<>()));
         if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},100);
+        qrScannerLauncher=registerForActivityResult(new ScanContract(), result->{
+            String value=result.getContents();
+            if(value==null||value.trim().isEmpty()) return;
+            String id=value.trim().toLowerCase(java.util.Locale.ROOT);
+            if(!id.endsWith("@nexus")){ toast(english?"Invalid NEXUS QR code":"Geçersiz NEXUS QR kodu"); return; }
+            addContact(id); showChat(id);
+        });
         ScrollView sv=new ScrollView(this);sv.setBackgroundColor(BG);root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);sv.addView(root);setContentView(sv);showHome();
         String relay=prefs.getString("relay","");if(!"wss://nexus-relay-0dd3.onrender.com".equals(relay)){relay="wss://nexus-relay-0dd3.onrender.com";prefs.edit().putString("relay",relay).apply();}connectRelay(relay);
     }
