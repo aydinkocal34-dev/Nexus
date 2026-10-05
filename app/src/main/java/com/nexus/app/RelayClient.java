@@ -35,6 +35,7 @@ public final class RelayClient {
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Listener listener;
     private WebSocket socket;
+    private volatile boolean connected=false;
 
     public RelayClient(Listener listener) {
         this.listener = listener;
@@ -67,7 +68,7 @@ public final class RelayClient {
                     JSONObject msg = new JSONObject(text);
                     String type = msg.optString("type");
                     if ("registered".equals(type)) {
-                        main.post(listener::onConnected);
+                        connected=true; main.post(listener::onConnected);
                     } else if ("prekey-request".equals(type)) {
                         String id = msg.getString("id");
                         String from = msg.getString("from");
@@ -99,11 +100,11 @@ public final class RelayClient {
             }
 
             @Override public void onFailure(WebSocket webSocket, Throwable t, Response response) {
-                main.post(() -> listener.onError(t.getMessage() == null ? "Relay connection failed" : t.getMessage()));
+                connected=false; main.post(() -> listener.onError(t.getMessage() == null ? "Relay connection failed" : t.getMessage()));
             }
 
             @Override public void onClosed(WebSocket webSocket, int code, String reason) {
-                main.post(listener::onClosed);
+                connected=false; main.post(listener::onClosed);
             }
         });
     }
@@ -113,7 +114,7 @@ public final class RelayClient {
     }
 
     public boolean sendCiphertext(String id, String toPeerId, byte[] ciphertext, int ciphertextType, int fromDeviceId, long ttlMs) {
-        if (socket == null) return false;
+        if (socket == null || !connected) return false;
         try {
             JSONObject msg = new JSONObject();
             msg.put("type", "relay");
@@ -131,7 +132,7 @@ public final class RelayClient {
     }
 
     public boolean requestPreKey(String id, String toPeerId, long ttlMs) {
-        if (socket == null) return false;
+        if (socket == null || !connected) return false;
         try {
             JSONObject msg = new JSONObject();
             msg.put("type", "prekey-request");
@@ -146,7 +147,7 @@ public final class RelayClient {
     }
 
     public boolean sendPreKey(String id, String toPeerId, String bundle, long ttlMs) {
-        if (socket == null) return false;
+        if (socket == null || !connected) return false;
         try {
             JSONObject msg = new JSONObject();
             msg.put("type", "prekey");
@@ -162,7 +163,7 @@ public final class RelayClient {
     }
 
     public boolean sendReadReceipt(String id, String toPeerId) {
-        if (socket == null) return false;
+        if (socket == null || !connected) return false;
         try {
             JSONObject msg = new JSONObject();
             msg.put("type", "ack");
