@@ -92,7 +92,7 @@ public final class RealE2eeTransport implements RelayClient.Listener {
             Pending p=pending.get(i);if(!p.peerId.equals(peerId)||p.deviceId!=deviceId)continue;
             try{
                 DeviceE2eeController.CipherPacket cp=e2ee.encrypt(p.peerId,p.deviceId,p.text.getBytes(StandardCharsets.UTF_8));
-                if(relay.sendCiphertext(p.id,p.peerId,cp.bytes,cp.type,localDeviceId,86400000L)){pending.remove(i);outbox.save(pending);}
+                if(relay.sendCiphertext(p.id,p.peerId,cp.bytes,cp.type,localDeviceId,86400000L)){pending.remove(i);persistOutbox();}
             }catch(Exception ignored){}
         }
     }
